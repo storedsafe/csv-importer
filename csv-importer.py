@@ -383,7 +383,18 @@ def CSVRead(infile, template, fieldnames):
     return lines
 
 def insertObjects(data, vaultid):
-  # FIXME
+  if not allow_duplicates:
+    exists = find_duplicates(FIXME, vaultid)
+
+  if not exists:
+    r = requests.post(url + '/object', data=payload)
+    if not r.ok:
+      print("ERROR: Could not save object \"%s\"" % objectname)
+      sys.exit()
+    imported += 1
+  else:
+    duplicates += 1
+
   return(imported, duplicates)
 
 if __name__ == '__main__':
