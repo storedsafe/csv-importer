@@ -173,7 +173,7 @@ def main():
     template = findTemplateName(templateid)
 
   data = CSVRead(infile, template, fieldnames)
-  (imported, duplicates) = insertObjects(data, vaultid)
+  (imported, duplicates) = insertObjects(data, templateid, fieldnames, vaultid)
 
   if imported:
     print("Imported %d object/s." % imported)
@@ -382,18 +382,48 @@ def CSVRead(infile, template, fieldnames):
 
     return lines
 
-def insertObjects(data, vaultid):
-  if not allow_duplicates:
-    exists = find_duplicates(FIXME, vaultid)
+def find_duplicates(line, vaultid):
+  duplicate = False
+  return(duplicate)
 
-  if not exists:
-    r = requests.post(url + '/object', data=payload)
-    if not r.ok:
-      print("ERROR: Could not save object \"%s\"" % objectname)
-      sys.exit()
-    imported += 1
-  else:
-    duplicates += 1
+'''
+POST /api/1.0/object?token=StoredSafe-Token
+{
+    "token": "StoredSafe-Token",
+    "templateid": "1",
+    "groupid": "179",
+    "parentid": "0",
+    "objectname": "firewall2.za.example.com",
+    "host": "firewall2.za.example.com",
+    "username": "root",
+    "info": "The second pfSense fw protecting the ZA branch.",
+    "password": "~[vN8x9W6~7P367vm53Y",
+    "cryptedinfo": "iLO password is #q:vP74A+VRmW5Ueu12O" 
+}
+'''
+
+def insertObjects(lines, templateid, fieldnames, vaultid):
+  imported = duplicates = 0
+  exists = False
+  global token, url, verbose, create_vault, allow_duplicates
+
+  for line in lines:
+    if not allow_duplicates:
+      exists = find_duplicates(line, vaultid)
+
+    if not exists:
+      line['token'] = token
+      line['templateid'] = templateid
+      line['groupid'] = vaultid
+      line['parentid'] = "0"
+      line['objectname'] = data['host']
+      r = requests.post(url + '/object', json=item)
+      if not r.ok:
+        print("ERROR: Could not save object \"%s\"" % line['objectname'])
+        sys.exit()
+      imported += 1
+    else:
+      duplicates += 1
 
   return(imported, duplicates)
 
