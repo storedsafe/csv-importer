@@ -5,7 +5,8 @@
 csv-importer.py: Assist in parsing CSV files and output either a properly formatted JSON file suitable
   for import into StoredSafe or utilize the REST API to do a direct import to StoredSafe.
 """
- 
+
+from __future__ import print_function
 import sys
 import ssl
 import OpenSSL
@@ -16,8 +17,8 @@ import getpass
 import os.path
 import re
 import pprint
-#import requests
-#from requests_toolbelt.multipart.encoder import MultipartEncoder
+import requests
+from requests_toolbelt.multipart.encoder import MultipartEncoder
  
 __author__     = "Fredrik Soderblom"
 __copyright__  = "Copyright 2017, AB StoredSafe"
@@ -40,15 +41,19 @@ skip_first       = False
 delete_extra     = False
 
 def main():
-  user = apikey = vaultid = vaultname = supplied_token = rc_file = template = templateid = False
-  infile = outfile = fieldnames = separator = False
+  templateid = 1
+  template = "Server"
+  fieldnames = [ 'host', 'username', 'password', 'info', 'cryptedinfo' ]
+
+  user = apikey = vaultid = vaultname = supplied_token = rc_file = False
+  infile = outfile = separator = list_templates = list_fieldnames = False
   global token, url, verbose, debug, create_vault, allow_duplicates, no_rest, skip_first, delete_extra
 
   try:
    opts, args = getopt.getopt(sys.argv[1:], "s:u:a:v:t:",\
     [ "verbose", "debug", "storedsafe=", "token=", "user=", "apikey=", "vault=", "vaultid=",\
      "template=", "templateid=", "rc=", "csv=", "json=", "create-vault", "allow-duplicates", "no-rest",\
-     "fieldnames=", "separator=", "skip-first-line", "remove-extra-columns" ])
+     "fieldnames=", "separator=", "skip-first-line", "remove-extra-columns", "list-templates", "list-fieldnames" ])
   except getopt.GetoptError as err:
     print("%s" % str(err))
     usage()
@@ -109,26 +114,24 @@ def main():
       skip_first = True
     elif opt in ("--remove-extra-columns"):
       delete_extra = True
+    elif opt in ("--list-templates"):
+      list_templates = True
+    elif opt in ("--list-fieldnames"):
+      list_fieldnames = True
+
     elif opt in ("-?", "--help"):
       usage()
       sys.exit()
     else:
       assert False, "Unrecognized option"
 
-  if outfile:
-     output = open(outfile, 'w')
-
   if no_rest:
-    if not template:
-      template = "Server"
-    if not fieldnames:
-      fieldnames = [ 'host', 'username', 'password', 'info', 'cryptedinfo' ]
-
     lines = CSVRead(infile, template, fieldnames)
     data = {}
     data[template] = lines
 
     if outfile:
+      output = open(outfile, 'w')
       output.write(json.dumps(data, indent=4, ensure_ascii=False, encoding="utf-8"))
       output.close()
     else:
@@ -143,6 +146,8 @@ def main():
   if rc_file:
     (storedsafe, token) = readrc(rc_file)
   
+  url = "https://" + storedsafe + "/api/1.0"
+
   if not token:
     if user and apikey:
       pp = passphrase(user)
@@ -151,6 +156,26 @@ def main():
     else:
       print("ERROR: StoredSafe User (--user) and a StoredSafe API key (--apikey) or a valid StoredSafe Token (--token) is mandatory arguments.")
       sys.exit()
+
+  if list_templates:
+    listTemplates()
+    sys.exit()
+
+  # Check if Template exists
+  if template:
+    templateid = findTemplateID(template)
+
+  # Check if Template-ID exists
+  if templateid:
+    template = findTemplateName(templateid)
+
+  if list_fieldnames:
+    listFieldNames(templateid)
+    sys.exit()
+
+  # Extract field names
+  if not fieldnames:
+    fieldnames = getFieldNames(templateid)
 
   # Check if Vaultname exists
   if vaultname:
@@ -163,14 +188,6 @@ def main():
     if not create_vault:
       print("ERROR: One of \"--vault\", \"--vaultid\" or \"--create-vault\" is mandatory.")
       sys.exit()
-
-  # Check if Template exists
-  if template:
-    templateid = findTemplateID(template)
-
-  # Check if Template-ID exists
-  if templateid:
-    template = findTemplateName(templateid)
 
   data = CSVRead(infile, template, fieldnames)
   (imported, duplicates) = insertObjects(data, templateid, fieldnames, vaultid)
@@ -292,7 +309,6 @@ def findVaultID(vaultname):
 
 def findVaultName(vaultid):
   global token, url, create_vault, verbose, debug
-
   payload = { 'token': token }
   try:
     r = requests.get(url + '/vault/' + vaultid, params=payload)
@@ -317,6 +333,55 @@ def findVaultName(vaultid):
 
   return(vaultname)
 
+def listFieldNames(templateid):
+  global token, url, verbose, debug
+
+  payload = { 'token': token }
+  try:
+    r = requests.get(url + '/template/' + templateid, params=payload)
+  except:
+    print("ERROR: No connection to \"%s\"" % url)
+    sys.exit()
+  data = json.loads(r.content)
+  if not r.ok:
+    print("ERROR: Can not find Template-ID \"%s\"." % templateid)
+    sys.exit()
+
+  if data["CALLINFO"]["status"] == "SUCCESS":
+    template = data["TEMPLATE"][templateid]["INFO"]["name"]
+    if debug: print("Found Template \"%s\" via Template-ID \"%s\"" % (template, templateid))
+  else:
+    print("ERROR: Can not retreive Template for Template-ID %s." % templateid)
+    sys.exit()
+
+  for v in data["TEMPLATE"][templateid]['STRUCTURE']:
+    print("\"%s\"," % (v), end='')
+
+  return
+
+def listTemplates():
+  template = False
+  templateid = False
+  global token, url, verbose, debug
+
+  payload = { 'token': token }
+  try:
+    r = requests.get(url + '/template', params=payload)
+  except:
+    print("ERROR: No connection to \"%s\"" % url)
+    sys.exit()
+  data = json.loads(r.content)
+  if not r.ok:
+    print("ERROR: Can not find any templates.")
+    sys.exit()
+
+  for v in data["TEMPLATE"].iteritems():
+    template = data["TEMPLATE"][v[0]]["INFO"]["name"]
+    templateid = v[0]
+    print("Found Template \"%s\" as Template-ID \"%s\"" % (template, templateid))
+
+  return
+
 def findTemplateID(template):
   global token, url, verbose, debug
   templateid = False
@@ -333,7 +398,7 @@ def findTemplateID(template):
     sys.exit()
 
   for v in data["TEMPLATE"].iteritems():
-    if template == data["TEMPLATE"][v[0]]["name"]:
+    if template == data["TEMPLATE"][v[0]]["INFO"]["name"]:
       templateid = v[0]
       if debug: print("Found Template \"%s\" as Template-ID \"%s\"" % (template, templateid))
 
@@ -358,7 +423,7 @@ def findTemplateName(templateid):
     sys.exit()
 
   if data["CALLINFO"]["status"] == "SUCCESS":
-    template = data["TEMPLATE"][templateid]["name"]
+    template = data["TEMPLATE"][templateid]["INFO"]["name"]
     if debug: print("Found Template \"%s\" via Template-ID \"%s\"" % (template, templateid))
   else:
     print("ERROR: Can not retreive Template for Template-ID %s." % templateid)
@@ -416,8 +481,8 @@ def insertObjects(lines, templateid, fieldnames, vaultid):
       line['templateid'] = templateid
       line['groupid'] = vaultid
       line['parentid'] = "0"
-      line['objectname'] = data['host']
-      r = requests.post(url + '/object', json=item)
+      line['objectname'] = line['host']
+      r = requests.post(url + '/object', json=line)
       if not r.ok:
         print("ERROR: Could not save object \"%s\"" % line['objectname'])
         sys.exit()
