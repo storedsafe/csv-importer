@@ -41,19 +41,21 @@ skip_first       = False
 delete_extra     = False
 
 def main():
-  templateid = 1
-  template = "Server"
+  templateid = '1'
+  template = 'Server'
   fieldnames = [ 'host', 'username', 'password', 'info', 'cryptedinfo' ]
-
-  user = apikey = vaultid = vaultname = supplied_token = rc_file = False
-  infile = outfile = separator = list_templates = list_fieldnames = False
+  separator = ','
+  user = apikey = supplied_token = storedsafe = rc_file = '' 
+  vaultid = vaultname = infile = outfile = ''
+  list_templates = list_fieldnames = list_vaults = False
   global token, url, verbose, debug, create_vault, allow_duplicates, no_rest, skip_first, delete_extra
 
   try:
    opts, args = getopt.getopt(sys.argv[1:], "s:u:a:v:t:",\
     [ "verbose", "debug", "storedsafe=", "token=", "user=", "apikey=", "vault=", "vaultid=",\
-     "template=", "templateid=", "rc=", "csv=", "json=", "create-vault", "allow-duplicates", "no-rest",\
-     "fieldnames=", "separator=", "skip-first-line", "remove-extra-columns", "list-templates", "list-fieldnames" ])
+     "template=", "templateid=", "rc=", "csv=", "json=", "create-vault", "allow-duplicates",\
+     "no-rest", "fieldnames=", "separator=", "skip-first-line", "remove-extra-columns",\
+     "list-templates", "list-fieldnames", "list-vaults" ])
   except getopt.GetoptError as err:
     print("%s" % str(err))
     usage()
@@ -110,13 +112,15 @@ def main():
       allow_duplicates = True
     elif opt in ("--no-rest"):
       no_rest = True
-    elif opt in ("--skip-first-line"):
+    elif opt in ("--skip-first-line", "--skip"):
       skip_first = True
-    elif opt in ("--remove-extra-columns"):
+    elif opt in ("--remove-extra-columns", "--remove"):
       delete_extra = True
-    elif opt in ("--list-templates"):
+    elif opt in ("--list-vaults", "--vaults"):
+      list_vaults = True
+    elif opt in ("--list-templates", "--templates"):
       list_templates = True
-    elif opt in ("--list-fieldnames"):
+    elif opt in ("--list-fieldnames", "--fieldnames"):
       list_fieldnames = True
 
     elif opt in ("-?", "--help"):
@@ -125,8 +129,12 @@ def main():
     else:
       assert False, "Unrecognized option"
 
+  #
+  # No connection to server required/available, just format and dump to screen or file
+  #
+
   if no_rest:
-    lines = CSVRead(infile, template, fieldnames)
+    lines = CSVRead(infile, template, fieldnames, separator)
     data = {}
     data[template] = lines
 
@@ -139,7 +147,9 @@ def main():
 
     sys.exit(0)
 
-  # REST continues
+  #
+  # REST mode, on-line importing
+  #
 
   if supplied_token:
     token = supplied_token
@@ -154,34 +164,44 @@ def main():
       otp = OTP(user)
       token = login(user, pp + apikey + otp)
     else:
-      print("ERROR: StoredSafe User (--user) and a StoredSafe API key (--apikey) or a valid StoredSafe Token (--token) is mandatory arguments.")
+      print("INFO: You need to either specify operation without REST connectivity (--no-rest) or supply valid credentials. (--user, --apikey, --token or --rc).")
       sys.exit()
 
+  if not authCheck():
+    sys.exit()
+
+  # Just list vaults available to the current logged in user
+  if list_vaults:
+    listVaults()
+    sys.exit()
+
+  # List all available templates on the server
   if list_templates:
     listTemplates()
     sys.exit()
 
-  # Check if Template exists
-  if template:
-    templateid = findTemplateID(template)
-
-  # Check if Template-ID exists
+  # Check if Template-ID exists, return Template name
   if templateid:
     template = findTemplateName(templateid)
 
+  # Check if Template exists, return Template-ID
+  if template:
+    templateid = findTemplateID(template)
+
+  # List the fields in a given Template-ID
   if list_fieldnames:
-    listFieldNames(templateid)
+    print(','.join(getFieldNames(templateid)))
     sys.exit()
 
-  # Extract field names
+  # Extract field names, unless given on command line
   if not fieldnames:
     fieldnames = getFieldNames(templateid)
 
-  # Check if Vaultname exists
+  # Check if Vaultname exists, returns Vault-ID
   if vaultname:
     vaultid = findVaultID(vaultname)
 
-  # Check if Vault-ID exists
+  # Check if Vault-ID exists, returns Vault name
   if vaultid:
     vaultname = findVaultName(vaultid)
   else:
@@ -189,7 +209,8 @@ def main():
       print("ERROR: One of \"--vault\", \"--vaultid\" or \"--create-vault\" is mandatory.")
       sys.exit()
 
-  data = CSVRead(infile, template, fieldnames)
+  # Read input and import via REST
+  data = CSVRead(infile, template, fieldnames, separator)
   (imported, duplicates) = insertObjects(data, templateid, fieldnames, vaultid)
 
   if imported:
@@ -222,6 +243,9 @@ def usage():
   print(" --skip-first-line              Skip first line of input. A CSV file usually has headers, use this to skip them.")
   print(" --remove-extra-columns         Remove any extra columns the if CSV file has more columns than the template.")
 # print(" --stuff-extra-in <field>       Add data from extranous columns to this field.") # NOTIMPL
+  print(" --list-vaults                  List all vaults accessible to the authenticated user")
+  print(" --list-templates               List all available templates")
+  print(" --list-fieldnames              List all fieldnames in the specified template (--template or --templateid)")
   print("\nExample using interactive login:")
   print("$ %s --storedsafe safe.domain.cc --user bob --apikey myapikey --csv file.csv --vault \"Public Web Servers\" --verbose" % sys.argv[0])
   print("\nExample using pre-authenticated login:")
@@ -276,6 +300,29 @@ def login(user, key):
   else:
     print("ERROR: %s" % data["ERRORS"][0])
     sys.exit()
+
+def authCheck():
+  global token, url, verbose, debug
+
+  payload = { 'token': token }
+  try:
+    r = requests.post(url + '/auth/check', data=json.dumps(payload))
+  except:
+    print("ERROR: Can not reach \"%s\"" % url)
+    sys.exit()
+
+  data = json.loads(r.content)
+  if not r.ok:
+    print("Not logged in.")
+    sys.exit()
+
+  if data["CALLINFO"]["status"] == 'SUCCESS':
+    if verbose: print("Authenticated.")
+  else:
+    print("ERROR: Session not authenticated with server. Token is invalid.")
+    return(False)
+
+  return(True)
 
 def findVaultID(vaultname):
   global token, url, verbose, debug
@@ -333,7 +380,7 @@ def findVaultName(vaultid):
 
   return(vaultname)
 
-def listFieldNames(templateid):
+def getFieldNames(templateid):
   global token, url, verbose, debug
 
   payload = { 'token': token }
@@ -354,10 +401,11 @@ def listFieldNames(templateid):
     print("ERROR: Can not retreive Template for Template-ID %s." % templateid)
     sys.exit()
 
+  fieldnames = []
   for v in data["TEMPLATE"][templateid]['STRUCTURE']:
-    print("\"%s\"," % (v), end='')
+    fieldnames.append(v)
 
-  return
+  return fieldnames
 
 def listTemplates():
   template = False
@@ -379,6 +427,29 @@ def listTemplates():
     template = data["TEMPLATE"][v[0]]["INFO"]["name"]
     templateid = v[0]
     print("Found Template \"%s\" as Template-ID \"%s\"" % (template, templateid))
+
+  return
+
+def listVaults():
+  vaultname = False
+  vaultid = False
+  global token, url, verbose, debug
+
+  payload = { 'token': token }
+  try:
+    r = requests.get(url + '/vault', params=payload)
+  except:
+    print("ERROR: No connection to \"%s\"" % url)
+    sys.exit()
+  data = json.loads(r.content)
+  if not r.ok:
+    print("ERROR: Can not find any vaults.")
+    sys.exit()
+
+  for v in data["GROUP"].iteritems():
+    vaultname = data["GROUP"][v[0]]["groupname"]
+    vaultid = v[0]
+    print("Vault \"%s\" (Vault-ID \"%s\")" % (vaultname, vaultid))
 
   return
 
@@ -415,7 +486,7 @@ def findTemplateName(templateid):
   try:
     r = requests.get(url + '/template/' + templateid, params=payload)
   except:
-    print("ERROR: No connection to \"%s\"" % url)
+    print("ERROR: No connection to \"%s\" (1)" % url)
     sys.exit()
   data = json.loads(r.content)
   if not r.ok:
@@ -431,9 +502,9 @@ def findTemplateName(templateid):
 
   return(template)
 
-def CSVRead(infile, template, fieldnames):
+def CSVRead(infile, template, fieldnames, separator):
     global skip_first, delete_extra
-    reader = csv.DictReader(open(infile, 'rb'), fieldnames=fieldnames, restkey="unspecified-columns")
+    reader = csv.DictReader(open(infile, 'rb'), delimiter=separator, fieldnames=fieldnames, restkey="unspecified-columns")
 
     if skip_first:
     	reader.next()
@@ -448,24 +519,10 @@ def CSVRead(infile, template, fieldnames):
     return lines
 
 def find_duplicates(line, vaultid):
+  # FIXME
   duplicate = False
-  return(duplicate)
 
-'''
-POST /api/1.0/object?token=StoredSafe-Token
-{
-    "token": "StoredSafe-Token",
-    "templateid": "1",
-    "groupid": "179",
-    "parentid": "0",
-    "objectname": "firewall2.za.example.com",
-    "host": "firewall2.za.example.com",
-    "username": "root",
-    "info": "The second pfSense fw protecting the ZA branch.",
-    "password": "~[vN8x9W6~7P367vm53Y",
-    "cryptedinfo": "iLO password is #q:vP74A+VRmW5Ueu12O" 
-}
-'''
+  return(duplicate)
 
 def insertObjects(lines, templateid, fieldnames, vaultid):
   imported = duplicates = 0
