@@ -39,16 +39,18 @@ allow_duplicates = False
 no_rest          = False
 skip_first       = False
 delete_extra     = False
+munch_stdin      = False
 
 def main():
+  global token, url, verbose, debug, create_vault, allow_duplicates, no_rest, skip_first, delete_extra, munch_stdin
+
+  # Some default values
   templateid = '1'
   template = 'Server'
   fieldnames = [ 'host', 'username', 'password', 'info', 'cryptedinfo' ]
   separator = ','
-  user = apikey = supplied_token = storedsafe = rc_file = '' 
-  vaultid = vaultname = infile = outfile = ''
   list_templates = list_fieldnames = list_vaults = False
-  global token, url, verbose, debug, create_vault, allow_duplicates, no_rest, skip_first, delete_extra
+  user = apikey = supplied_token = storedsafe = rc_file = vaultid = vaultname = outfile = infile = ''
 
   try:
    opts, args = getopt.getopt(sys.argv[1:], "s:u:a:v:t:",\
@@ -128,6 +130,10 @@ def main():
       sys.exit()
     else:
       assert False, "Unrecognized option"
+
+  # No input file, read from stdin
+  if not infile:
+    munch_stdin = True
 
   #
   # No connection to server required/available, just format and dump to screen or file
@@ -238,7 +244,7 @@ def usage():
   print(" --vault <Vaultname>            Store any found certificates in this vault. Name has to match exactly.")
   print(" --vaultid <Vault-ID>           Store any found certificates in this Vault-ID.")
 # print(" --create-vault                 (Boolean) Create missing vaults.") # NOTIMPL
-  print(" --allow-duplicates             (Boolean) Allow duplicates when importing.")
+# print(" --allow-duplicates             (Boolean) Allow duplicates when importing.")
   print(" --no-rest                      Operate in off-line mode, do not attempt to use the REST API")
   print(" --skip-first-line              Skip first line of input. A CSV file usually has headers, use this to skip them.")
   print(" --remove-extra-columns         Remove any extra columns the if CSV file has more columns than the template.")
@@ -288,6 +294,7 @@ def OTP(user):
 
 def login(user, key):
   global url
+
   payload = { 'username': user, 'keys': key }
   try:
     r = requests.post(url + '/auth', data=json.dumps(payload))
@@ -317,7 +324,7 @@ def authCheck():
     sys.exit()
 
   if data["CALLINFO"]["status"] == 'SUCCESS':
-    if verbose: print("Authenticated.")
+    if verbose: print("Authenticated. (Using token \"%s\")" % token)
   else:
     print("ERROR: Session not authenticated with server. Token is invalid.")
     return(False)
@@ -326,6 +333,7 @@ def authCheck():
 
 def findVaultID(vaultname):
   global token, url, verbose, debug
+
   vaultid = False
 
   payload = { 'token': token }
@@ -342,7 +350,7 @@ def findVaultID(vaultname):
   for v in data["GROUP"].iteritems():
     if vaultname == data["GROUP"][v[0]]["groupname"]:
       vaultid = v[0]
-      if debug: print("Found Vault \"%s\" via Vaultname as Vault-ID \"%s\"" % (vaultname, vaultid))
+      if debug: print("DEBUG: Found Vault \"%s\" via Vaultname as Vault-ID \"%s\"" % (vaultname, vaultid))
 
   if not vaultid:
     if create_vault:
@@ -356,6 +364,7 @@ def findVaultID(vaultname):
 
 def findVaultName(vaultid):
   global token, url, create_vault, verbose, debug
+
   payload = { 'token': token }
   try:
     r = requests.get(url + '/vault/' + vaultid, params=payload)
@@ -373,7 +382,7 @@ def findVaultName(vaultid):
 
   if data["CALLINFO"]["status"] == "SUCCESS":
     vaultname = data["GROUP"][vaultid]["groupname"]
-    if debug: print("Found Vault \"%s\" via Vault-ID \"%s\"" % (vaultname, vaultid))
+    if debug: print("DEBUG: Found Vault \"%s\" via Vault-ID \"%s\"" % (vaultname, vaultid))
   else:
     print("ERROR: Can not retreive Vaultname for Vault-ID %s." % vaultid)
     sys.exit()
@@ -396,7 +405,7 @@ def getFieldNames(templateid):
 
   if data["CALLINFO"]["status"] == "SUCCESS":
     template = data["TEMPLATE"][templateid]["INFO"]["name"]
-    if debug: print("Found Template \"%s\" via Template-ID \"%s\"" % (template, templateid))
+    if debug: print("DEBUG: Found Template \"%s\" via Template-ID \"%s\"" % (template, templateid))
   else:
     print("ERROR: Can not retreive Template for Template-ID %s." % templateid)
     sys.exit()
@@ -408,9 +417,10 @@ def getFieldNames(templateid):
   return fieldnames
 
 def listTemplates():
+  global token, url, verbose, debug
+
   template = False
   templateid = False
-  global token, url, verbose, debug
 
   payload = { 'token': token }
   try:
@@ -431,9 +441,10 @@ def listTemplates():
   return
 
 def listVaults():
+  global token, url, verbose, debug
+
   vaultname = False
   vaultid = False
-  global token, url, verbose, debug
 
   payload = { 'token': token }
   try:
@@ -455,6 +466,7 @@ def listVaults():
 
 def findTemplateID(template):
   global token, url, verbose, debug
+
   templateid = False
 
   payload = { 'token': token }
@@ -471,7 +483,7 @@ def findTemplateID(template):
   for v in data["TEMPLATE"].iteritems():
     if template == data["TEMPLATE"][v[0]]["INFO"]["name"]:
       templateid = v[0]
-      if debug: print("Found Template \"%s\" as Template-ID \"%s\"" % (template, templateid))
+      if debug: print("DEBUG: Found Template \"%s\" as Template-ID \"%s\"" % (template, templateid))
 
   if not templateid:
     print("ERROR: Can not find Template \"%s\"." % template)   
@@ -495,7 +507,7 @@ def findTemplateName(templateid):
 
   if data["CALLINFO"]["status"] == "SUCCESS":
     template = data["TEMPLATE"][templateid]["INFO"]["name"]
-    if debug: print("Found Template \"%s\" via Template-ID \"%s\"" % (template, templateid))
+    if debug: print("DEBUG: Found Template \"%s\" via Template-ID \"%s\"" % (template, templateid))
   else:
     print("ERROR: Can not retreive Template for Template-ID %s." % templateid)
     sys.exit()
@@ -503,35 +515,100 @@ def findTemplateName(templateid):
   return(template)
 
 def CSVRead(infile, template, fieldnames, separator):
-    global skip_first, delete_extra
-    reader = csv.DictReader(open(infile, 'rb'), delimiter=separator, fieldnames=fieldnames, restkey="unspecified-columns")
+  global skip_first, delete_extra, munch_stdin
 
-    if skip_first:
-    	reader.next()
+  if munch_stdin:
+    file = sys.stdin
+  else:
+    try:
+      file = open(infile, 'rb')
+    except:
+      print("ERROR: Could not open \"%s\"" % infile)
+      sys.exit()
 
-    lines = []
-    for line in reader:
-      if delete_extra:
-      	if 'unspecified-columns' in line:
-      		del line['unspecified-columns']
-      lines.append(line)
+  reader = csv.DictReader(file, delimiter=separator, fieldnames=fieldnames, restkey="unspecified-columns")
 
-    return lines
+  if skip_first:
+    reader.next()
 
-def find_duplicates(line, vaultid):
-  # FIXME
+  lines = []
+  for line in reader:
+    if delete_extra:
+    	if 'unspecified-columns' in line:
+    		del line['unspecified-columns']
+    lines.append(line)
+
+  return lines
+
+def getObjects(vaultid):
+  global token, url, verbose, debug
+
+  payload = { 'token': token }
+  try:
+    r = requests.get(url + '/vault/' + vaultid, params=payload)
+  except:
+    print("ERROR: No connection to \"%s\"" % url)
+    sys.exit()
+  data = json.loads(r.content)
+  if not r.ok:
+    print("ERROR: Can not find any vaults.")
+    sys.exit()
+
+  if debug: print("DEBUG: Getting objects in Vault \"%s\" (Vault-ID %s)" % (data['GROUP'][vaultid]['groupname'], vaultid))
+
+  objects = {}
+  for v in data['OBJECT'].iteritems():
+    objects[v[0]] = v[1]
+
+  return objects
+
+def find_duplicates(line, templateid, vaultid):
+  candidate = match = 0
   duplicate = False
+
+  fieldnames = getFieldNames(templateid)
+  objects = getObjects(vaultid)
+
+  if debug: print("DEBUG: Searching thru Vault-ID %s for duplicates." % vaultid)
+  for key in objects.keys():
+
+    if objects[key]['templateid'] == templateid:
+
+      if debug: print(" DEBUG: Examining object \"%s\" (Object-ID %s)" % (objects[key]['objectname'], key))
+      for fieldname in fieldnames:
+        if fieldname in objects[key]['public']:
+          if debug: print("  DEBUG: Examine \"%s\": found \"%s\" (compare with \"%s\")" % (fieldname, objects[key]['public'][fieldname], line[fieldname]))
+          if objects[key]['public'][fieldname] == line[fieldname]:
+            candidate += 1
+            if debug: print("   DEBUG: Field matched. (%d total matche/s)" % (candidate))
+
+      if debug: print(" DEBUG: end of object %s (%d field/s matched)" % (key, candidate), end='')
+      if (candidate >= 3):
+        match += 1
+        if debug: print(", marking as a duplicate.")
+      else:
+        if debug: print(".")
+      candidate = 0
+    else:
+      if debug: print("DEBUG: Wrong template (#%s), skipping." % (objects[key]['templateid']))
+
+  if (match >= 1):
+    duplicate = True
+    if verbose: print("INFO: Content from %s object/s matched, marking as duplicate." % match)
+  else:
+    if verbose: print("INFO: Not a duplicate.")
 
   return(duplicate)
 
 def insertObjects(lines, templateid, fieldnames, vaultid):
-  imported = duplicates = 0
-  exists = False
   global token, url, verbose, create_vault, allow_duplicates
+
+  exists = False
+  imported = duplicates = 0
 
   for line in lines:
     if not allow_duplicates:
-      exists = find_duplicates(line, vaultid)
+      exists = find_duplicates(line, templateid, vaultid)
 
     if not exists:
       line['token'] = token
