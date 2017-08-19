@@ -40,9 +40,10 @@ no_rest          = False
 skip_first       = False
 delete_extra     = False
 munch_stdin      = False
+objectname       = 'host'
 
 def main():
-  global token, url, verbose, debug, create_vault, allow_duplicates, no_rest, skip_first, delete_extra, munch_stdin
+  global token, url, verbose, debug, create_vault, allow_duplicates, no_rest, skip_first, delete_extra, munch_stdin, objectname
 
   # Some default values
   templateid = '1'
@@ -53,11 +54,11 @@ def main():
   user = apikey = supplied_token = storedsafe = rc_file = vaultid = vaultname = outfile = infile = ''
 
   try:
-   opts, args = getopt.getopt(sys.argv[1:], "s:u:a:v:t:",\
+   opts, args = getopt.getopt(sys.argv[1:], "s:u:a:v:t:?",\
     [ "verbose", "debug", "storedsafe=", "token=", "user=", "apikey=", "vault=", "vaultid=",\
      "template=", "templateid=", "rc=", "csv=", "json=", "create-vault", "allow-duplicates",\
-     "no-rest", "fieldnames=", "separator=", "skip-first-line", "remove-extra-columns",\
-     "list-templates", "list-fieldnames", "list-vaults" ])
+     "no-rest", "fieldnames=", "separator=", "objectname=", "skip-first-line", "remove-extra-columns",\
+     "list-templates", "list-fieldnames", "list-vaults", "help" ])
   except getopt.GetoptError as err:
     print("%s" % str(err))
     usage()
@@ -74,6 +75,7 @@ def main():
       verbose = True
     elif opt in ("--debug"):
       debug = True
+      verbose = True
     elif opt in ("-s", "--storedsafe"):
       storedsafe = arg
     elif opt in ("-u", "--user"):
@@ -110,6 +112,8 @@ def main():
       fieldnames = arg.split(',')
     elif opt in ("--create-vault"):
       create_vault = True
+    elif opt in ("--objectname"):
+      objectname = arg
     elif opt in ("--allow-duplicates"):
       allow_duplicates = True
     elif opt in ("--no-rest"):
@@ -124,7 +128,6 @@ def main():
       list_templates = True
     elif opt in ("--list-fieldnames", "--fieldnames"):
       list_fieldnames = True
-
     elif opt in ("-?", "--help"):
       usage()
       sys.exit()
@@ -220,9 +223,11 @@ def main():
   (imported, duplicates) = insertObjects(data, templateid, fieldnames, vaultid)
 
   if imported:
-    print("Imported %d object/s." % imported)
+    if verbose: print("INFO: Imported %d object/s" % imported)
   if duplicates:
-    print("Found %d duplicate object/s. " % duplicates)
+    if verbose or not imported: 
+      print("WARNING: Skipped %d duplicate object/s." % duplicates)
+    sys.exit(1)
 
   sys.exit(0)
 
@@ -230,33 +235,34 @@ def usage():
   print("Usage: %s [-vdsuat]" % sys.argv[0])
   print(" --verbose (or -v)              (Boolean) Enable verbose output.")
   print(" --debug (or -d)                (Boolean) Enable debug output.")
-  print(" --csv <file>                   File in CSV format to import.")
-  print(" --separator <char>             Use this character as CSV delimiter (defaults to ,)")
-  print(" --json <file>                  Store output (JSON) in this file.")
-  print(" --fieldnames <fields>          Specify the mapping between columns and field names. Has to match exactly. Defaults to the Server template.")
   print(" --rc <rc file>                 Use this file to obtain a valid token and a server address.")
   print(" --storedsafe (or -s) <Server>  Use this StoredSafe server.")
   print(" --user (or -u) <user>          Authenticate as this user to the StoredSafe server.")
   print(" --apikey (or -a) <API Key>     Use this unique API key when communicating with the StoredSafe server.")
   print(" --token (or -t) <Auth Token>   Use pre-authenticated token instead of --user and --apikey.")
+  print(" --csv <file>                   File in CSV format to import.")
+  print(" --separator <char>             Use this character as CSV delimiter. (defaults to ,)")
+  print(" --json <file>                  Store output (JSON) in this file.")
+  print(" --fieldnames <fields>          Specify the mapping between columns and field names. Has to match exactly. Defaults to the Server template.")
   print(" --template <template>          Use this template name for import. Name has to match exactly. Defaults to the Server template.")
   print(" --templateid <template-ID>     Use this template-ID when importing.")
-  print(" --vault <Vaultname>            Store any found certificates in this vault. Name has to match exactly.")
-  print(" --vaultid <Vault-ID>           Store any found certificates in this Vault-ID.")
+  print(" --vault <Vaultname>            Store imported objects in this vault. Name has to match exactly.")
+  print(" --vaultid <Vault-ID>           Store imported objects in this Vault-ID.")
+  print(" --objectname <field>           Use this field as objectname when storing objects. (Defaults to the host field from the Server template)")
 # print(" --create-vault                 (Boolean) Create missing vaults.") # NOTIMPL
-# print(" --allow-duplicates             (Boolean) Allow duplicates when importing.")
-  print(" --no-rest                      Operate in off-line mode, do not attempt to use the REST API")
+  print(" --allow-duplicates             (Boolean) Allow duplicates when importing.")
+  print(" --no-rest                      Operate in off-line mode, do not attempt to use the REST API.")
   print(" --skip-first-line              Skip first line of input. A CSV file usually has headers, use this to skip them.")
   print(" --remove-extra-columns         Remove any extra columns the if CSV file has more columns than the template.")
 # print(" --stuff-extra-in <field>       Add data from extranous columns to this field.") # NOTIMPL
-  print(" --list-vaults                  List all vaults accessible to the authenticated user")
-  print(" --list-templates               List all available templates")
-  print(" --list-fieldnames              List all fieldnames in the specified template (--template or --templateid)")
-  print("\nExample using interactive login:")
+  print(" --list-vaults                  List all vaults accessible to the authenticated user.")
+  print(" --list-templates               List all available templates.")
+  print(" --list-fieldnames              List all fieldnames in the specified template. (--template or --templateid)")
+  print("\nUsing REST API and interactive login:")
   print("$ %s --storedsafe safe.domain.cc --user bob --apikey myapikey --csv file.csv --vault \"Public Web Servers\" --verbose" % sys.argv[0])
-  print("\nExample using pre-authenticated login:")
-  print("$ %s --rc ~/.storedsafe.rc --vault \"Public Web Servers\" --csv file.csv" % sys.argv[0])
-  print("\nExample in off-line mode:")
+  print("\nUsing REST API and pre-authenticated login:")
+  print("$ %s --rc ~/.storedsafe-client.rc --vault \"Public Web Servers\" --csv file.csv" % sys.argv[0])
+  print("\nOff-line mode:")
   print("$ %s --no-rest --csv file.csv --json file.json --template Login --fieldnames host,username,password" % sys.argv[0])
 
 def readrc(rc_file):
@@ -324,9 +330,9 @@ def authCheck():
     sys.exit()
 
   if data["CALLINFO"]["status"] == 'SUCCESS':
-    if verbose: print("Authenticated. (Using token \"%s\")" % token)
+    if debug: print("DEBUG: Authenticated using token \"%s\"." % token)
   else:
-    print("ERROR: Session not authenticated with server. Token is invalid.")
+    print("ERROR: Session not authenticated with server. Token invalid?")
     return(False)
 
   return(True)
@@ -398,11 +404,11 @@ def getFieldNames(templateid):
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
-  data = json.loads(r.content)
   if not r.ok:
     print("ERROR: Can not find Template-ID \"%s\"." % templateid)
     sys.exit()
 
+  data = json.loads(r.content)
   if data["CALLINFO"]["status"] == "SUCCESS":
     template = data["TEMPLATE"][templateid]["INFO"]["name"]
     if debug: print("DEBUG: Found Template \"%s\" via Template-ID \"%s\"" % (template, templateid))
@@ -557,24 +563,35 @@ def getObjects(vaultid):
   if debug: print("DEBUG: Getting objects in Vault \"%s\" (Vault-ID %s)" % (data['GROUP'][vaultid]['groupname'], vaultid))
 
   objects = {}
-  for v in data['OBJECT'].iteritems():
-    objects[v[0]] = v[1]
+
+  if (len(data['OBJECT'])):
+    for v in data['OBJECT'].iteritems():
+      objects[v[0]] = v[1]
 
   return objects
 
 def find_duplicates(line, templateid, vaultid):
+  global objectname
+
   candidate = match = 0
   duplicate = False
 
+  vaultname = findVaultName(vaultid)
   fieldnames = getFieldNames(templateid)
   objects = getObjects(vaultid)
 
-  if debug: print("DEBUG: Searching thru Vault-ID %s for duplicates." % vaultid)
+  if verbose: print("INFO: Searching thru Vault \"%s\" (Vault-ID %s) for duplicates of \"%s\"." % (vaultname, vaultid, line['objectname']))
   for key in objects.keys():
 
     if objects[key]['templateid'] == templateid:
 
       if debug: print(" DEBUG: Examining object \"%s\" (Object-ID %s)" % (objects[key]['objectname'], key))
+
+      if 'objectname' in objects[key]:
+        if objects[key]['objectname'] == line['objectname']:
+          candidate += 1
+          if debug: print("   DEBUG: Field matched. (%d total matche/s)" % (candidate))
+
       for fieldname in fieldnames:
         if fieldname in objects[key]['public']:
           if debug: print("  DEBUG: Examine \"%s\": found \"%s\" (compare with \"%s\")" % (fieldname, objects[key]['public'][fieldname], line[fieldname]))
@@ -582,31 +599,34 @@ def find_duplicates(line, templateid, vaultid):
             candidate += 1
             if debug: print("   DEBUG: Field matched. (%d total matche/s)" % (candidate))
 
-      if debug: print(" DEBUG: end of object %s (%d field/s matched)" % (key, candidate), end='')
       if (candidate >= 3):
         match += 1
-        if debug: print(", marking as a duplicate.")
+        if verbose: print(" INFO: Object \"%s\" (Object-ID %s) (%d field/s matched) - Duplicate." % (objects[key]['objectname'], key, candidate))
       else:
-        if debug: print(".")
+        if debug: print(" DEBUG: Object \"%s\" (Object-ID %s) (%d field/s matched)" % (objects[key]['objectname'], key, candidate))
+
       candidate = 0
+
     else:
       if debug: print("DEBUG: Wrong template (#%s), skipping." % (objects[key]['templateid']))
 
   if (match >= 1):
     duplicate = True
-    if verbose: print("INFO: Content from %s object/s matched, marking as duplicate." % match)
+    if verbose: print("INFO: When importing \"%s\" to Vault \"%s\", %s object/s appeared identical, marking as a duplicate and skipping. (Use \"--allow-duplicates\" to force import)" % (line['objectname'], vaultname, match))
   else:
-    if verbose: print("INFO: Not a duplicate.")
+    if verbose: print("INFO: \"%s\" has no duplicates in Vault \"%s\"." % (line['objectname'], vaultname))
 
   return(duplicate)
 
 def insertObjects(lines, templateid, fieldnames, vaultid):
-  global token, url, verbose, create_vault, allow_duplicates
+  global token, url, verbose, create_vault, allow_duplicates, objectname
 
   exists = False
   imported = duplicates = 0
 
   for line in lines:
+    line['objectname'] = line[objectname]
+
     if not allow_duplicates:
       exists = find_duplicates(line, templateid, vaultid)
 
@@ -615,7 +635,6 @@ def insertObjects(lines, templateid, fieldnames, vaultid):
       line['templateid'] = templateid
       line['groupid'] = vaultid
       line['parentid'] = "0"
-      line['objectname'] = line['host']
       r = requests.post(url + '/object', json=line)
       if not r.ok:
         print("ERROR: Could not save object \"%s\"" % line['objectname'])
