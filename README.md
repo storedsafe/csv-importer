@@ -110,32 +110,32 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 ```
 --separator
 ```
-> 
+> Use this character as CSV separator (single character)
 
 ```
 --json
 ```
-> 
+> Output resulting JSON to this file.
 
 ```
 --fieldnames
 ```
-> 
+> Use this comma separated list as input field names. See ````--list-fieldnames``` for valid field names per template.
 
 ```
 --template
 ```
-> 
+> Use this StoredSafe template for import. See ```--list-templates``` for a complete list of supported templates on the server. (Case sensitive and name has to match exactly)
 
 ```
 --templateid
 ```
-> 
+> Instead of using the template name (```--template```), you can specify the Template-ID (which is unique per template).
 
 ```
 --vault|-v <Vaultname>
 ```
-> Store any found certificates in this vault. Name has to match exactly.
+> Store any found certificates in this vault. Name has to match exactly. See ```--list-vaults``` for a complete list of accessible vaults on the StoredSafe server.
 
 ```
 --vaultid <Vault-ID>
@@ -145,7 +145,7 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 ```
 --objectname
 ```
-> 
+> Use this field as the primary name for the object. Defaults to the "host" field from the Server template.
 
 ```
 --allow-duplicates
@@ -155,86 +155,160 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 ```
 --no-rest
 ```
-> 
+> Do not use the REST API, operate completely in off-line mode. Result displayed to screen (default) or can be saved in a file (```--json```)
 
 ```
 --skip-first-line
 ```
-> 
+> Normally the first line in a CSV file has headers, use this option to skip these.
 
 ```
 --remove-extra-columns
 ```
-> 
+> If the input CSV file has more columns than matching fields in StoredSafe, remove them.
 
 ```
 --list-vaults
 ```
-> 
+> List all vaults accessible to the authenticated user on the StoredSafe server.
 
 ```
 --list-templates
 ```
-> 
+> List all templates accessible to the authenticated user on the StoredSafe server.
 
 ```
 --list-fieldnames
 ```
-> 
+> List all fields in the specified template. Obtained by querying the template on the StoredSafe server.
 
 Usage
 =====
-Scan the networks 2001:db8:c016::202/128, 10.75.106.202/29 and 192.0.2.4/32 on port 443 for X.509 certificates. Store any certificates found in the "Public Web Servers" Vault on the StoredSafe server "safe.domain.cc" and arm an alarm that will fire 30 days prior to each certificates expiration date.
+
+Prepare a CSV file for importing objects to StoredSafe, this can be done manually or by exporting from an other password manager, or an excel spreadsheet.
 
 ```
-$ csv-importer.py -c 2001:db8:c016::202 -c 10.75.106.202/29 -c 192.0.2.4 -p 443 -s safe.domain.cc -u bob --apikey myapikey --vault "Public Web Servers" --verbose
-Enter bob's passphrase:
-Press bob's Yubikey:
-Using StoredSafe Server "safe.domain.cc" (URL: "https://safe.domain.cc/api/1.0")
-Logged in as "bob" with the API key "myapikey"
-Using the token "xyzzyxyzzy"
-Will store found certificates in Vault "Public Web Servers" (Vault-ID 181)
-Scanning network/s: 192.0.2.4/32, 10.75.106.202/29, 2001:db8:c016::202/128 on port/s: 443
-[Legend: "." for no response, "!" for an open port]
-!.!!.!..!!
-Host "192.0.2.4:443" (PTR: inferno.example.org) X509 CommonName="inferno.example.org" (expires in 57 days)
-Host "10.75.106.201:443" (PTR: webmail.domain.cc) X509 CommonName="*.domain.cc" (expires in 824 days)
-Host "10.75.106.202:443" (PTR: freeloaders.domain.cc) X509 CommonName="*.domain.cc" (expires in 824 days)
-Host "10.75.106.204:443" (PTR: domain.cc) X509 CommonName="domain.cc" (expires in 460 days)
-Host "10.75.106.207:443" (PTR: d1.domain.cc) X509 CommonName="d1.domain.cc" (expires in 576 days)
-Host "2001:db8:c016::202:443" (PTR: freeloaders.domain.cc) X509 CommonName="*.domain.cc" (expires in 824 days)
-Imported 6 certificates.
+$ cat file.csv
+host,username,password,info,cryptedinfo
+fw.storedsafe.com,admin,j5nJ2QQnRhp7xYwG8fExygDvD,Firewall for Stockholm office.,iLO password is k3PUibwrWMCYCtxlYgsrOiKRZZnIxA
+resolver.storedsafe.com,root,Xf6PVBdlad40sS3C7u1H6mVsD,"unbound, recursive resolver for Stockholm office",
+storedsafe.com,rolf,BoDJCrHLF4VNOyeBOuKzZocqc,Rolf Rolfsson,cryptedinfo
+storedsafe.com,sven,lKuBdy1k6HMxbVh6vRB5yW7q6,Sven Hell,cryptedinfo
+kdc.storedsafe.com,root,uFwWyzrAjyU4RKVdnnClXMuJ5,KDC located in D4K3,Backup GPG passphrase is 3Bxq8Df2LrPpf99qT0mml8SI5Di9hY7QwDMioHvARxj1fmXRFy
 ```
 
-Rescan the networks from the example above, csv-importer.py will detect that the certificates are already present in the vault "Public Web Servers" and will avoid storing duplicates by default (can be changed with --allow-duplicates).
+Import objects into the StoredSafe appliance using the file "file.csv" as input (content as below), use a pre-authenticated session (```--rc```) and store imported objects in the "Stockholm Office" Vault on the StoredSafe server "safe.domain.cc".
 
 ```
-$ csv-importer.py -c 2001:db8:c016::202 -c 10.75.106.202/29 -c 192.0.2.4 -s safe.domain.cc -u bob -a abcde12345 --vault "Public Web Servers" --verbose --timeout 1
-Enter bob's passphrase:
-Press bob's Yubikey:
-Using StoredSafe Server "safe.domain.cc" (URL: "https://safe.domain.cc/api/1.0")
-Logged in as "bob" with the API key "abcde12345"
-Using the token "xyzzyxyzzy"
-Will store found certificates in Vault "Public Web Servers" (Vault-ID 181)
-Scanning network/s: 192.0.2.4/32, 10.75.106.202/29, 2001:db8:c016::202/128 on port/s: 443
-[Legend: "." for no response, "!" for an open port]
-!.!!.!..!.
-Host "192.0.2.4:443" (PTR: inferno.example.org) X509 CommonName="inferno.example.org" (expires in 57 days)
-Found existing certificate as Object-ID "587" in Vault-ID "181"
-Host "10.75.106.201:443" (PTR: webmail.domain.cc) X509 CommonName="*.domain.cc" (expires in 823 days)
-Found existing certificate as Object-ID "588" in Vault-ID "181"
-Host "10.75.106.202:443" (PTR: freeloaders.domain.cc) X509 CommonName="*.domain.cc" (expires in 823 days)
-Found existing certificate as Object-ID "588" in Vault-ID "181"
-Host "10.75.106.204:443" (PTR: domain.cc) X509 CommonName="domain.cc" (expires in 459 days)
-Found existing certificate as Object-ID "590" in Vault-ID "181"
-Host "10.75.106.207:443" (PTR: d1.domain.cc) X509 CommonName="d1.domain.cc" (expires in 575 days)
-Found existing certificate as Object-ID "591" in Vault-ID "181"
-Found 5 duplicate certificate/s.
+$ csv-importer.py --rc ~/.storedsafe-client.rc --csv file.csv --vault "Stockholm Office" --skip-first-line --verbose
+Importing "fw.storedsafe.com" into the Vault "Stockholm Office" (Vault-ID 182).
+Importing "resolver.storedsafe.com" into the Vault "Stockholm Office" (Vault-ID 182).
+Importing "storedsafe.com" into the Vault "Stockholm Office" (Vault-ID 182).
+Importing "storedsafe.com" into the Vault "Stockholm Office" (Vault-ID 182).
+Importing "kdc.storedsafe.com" into the Vault "Stockholm Office" (Vault-ID 182).
+Imported 5 object/s
+```
+
+Re-running the import, csv-importer.py will detect that the objects are already present in the vault "Public Web Servers" and will avoid storing duplicates by default. (can be changed with --allow-duplicates)
+
+```
+$ csv-importer.py --rc ~/.storedsafe-client.rc --csv file.csv --vault "Stockholm Office" --skip-first-line --verbose
+WARNING: Object "fw.storedsafe.com" (Object-ID 696) (4 field/s matched "fw.storedsafe.com") - duplicate.
+WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "fw.storedsafe.com". (Use "--allow-duplicates" to force import)
+WARNING: Object "resolver.storedsafe.com" (Object-ID 697) (4 field/s matched "resolver.storedsafe.com") - duplicate.
+WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "resolver.storedsafe.com". (Use "--allow-duplicates" to force import)
+WARNING: Object "storedsafe.com" (Object-ID 698) (4 field/s matched "storedsafe.com") - duplicate.
+WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "storedsafe.com". (Use "--allow-duplicates" to force import)
+WARNING: Object "storedsafe.com" (Object-ID 699) (4 field/s matched "storedsafe.com") - duplicate.
+WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "storedsafe.com". (Use "--allow-duplicates" to force import)
+WARNING: Object "kdc.storedsafe.com" (Object-ID 700) (4 field/s matched "kdc.storedsafe.com") - duplicate.
+WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "kdc.storedsafe.com". (Use "--allow-duplicates" to force import)
+WARNING: Skipped 5 duplicate object/s.
+```
+
+List all available templates on the server.
+
+```
+$ csv-importer.py --rc ~/.storedsafe-client.rc --list-templates
+Found Template "Credit Card" as Template-ID "11"
+Found Template "Short login" as Template-ID "10"
+Found Template "Server" as Template-ID "1"
+Found Template "Folder" as Template-ID "2"
+Found Template "Quicknote" as Template-ID "5"
+Found Template "Login" as Template-ID "4"
+Found Template "PIN code" as Template-ID "9"
+Found Template "Note" as Template-ID "8"
+Found Template "Server/IP" as Template-ID "1001"
+```
+
+List all field names in a selected template.
+
+```
+$ csv-importer.py --rc ~/.storedsafe-client.rc --list-fieldnames --templateid 1001
+username,info,ip,host,password,cryptedinfo
+
+```
+
+List all vaults available to the current authenticated users.
+
+```
+$ csv-importer.py --rc ~/.storedsafe-client.rc --list-vaults
+Vault "StoredSafe" (Vault-ID "1") with "Admin" permissions.
+Vault "Testing grounds" (Vault-ID "19") with "Admin" permissions.
+Vault "Stockholm Office" (Vault-ID "182") with "Admin" permissions.
+Vault "Public Web Servers" (Vault-ID "181") with "Admin" permissions.
+Vault "Firewalls in ZA" (Vault-ID "179") with "Admin" permissions.
+```
+
+Using the off-line mode, format the input CSV file according to the StoredSafe JSON specifications, which latter can be validated and imported thru the standard StoredSafe web UI. 
+
+```
+$ csv-importer.py --no-rest --csv file.csv --skip-first-line
+{
+    "Server": [
+        {
+            "username": "admin",
+            "info": "Firewall for Stockholm office.",
+            "host": "fw.storedsafe.com",
+            "password": "j5nJ2QQnRhp7xYwG8fExygDvD",
+            "cryptedinfo": "iLO password is k3PUibwrWMCYCtxlYgsrOiKRZZnIxA"
+        },
+        {
+            "username": "root",
+            "info": "unbound, recursive resolver for Stockholm office",
+            "host": "resolver.storedsafe.com",
+            "password": "Xf6PVBdlad40sS3C7u1H6mVsD",
+            "cryptedinfo": ""
+        },
+        {
+            "username": "rolf",
+            "info": "Rolf Rolfsson",
+            "host": "storedsafe.com",
+            "password": "BoDJCrHLF4VNOyeBOuKzZocqc",
+            "cryptedinfo": "cryptedinfo"
+        },
+        {
+            "username": "sven",
+            "info": "Sven Hell",
+            "host": "storedsafe.com",
+            "password": "lKuBdy1k6HMxbVh6vRB5yW7q6",
+            "cryptedinfo": "cryptedinfo"
+        },
+        {
+            "username": "root",
+            "info": "KDC located in D4K3",
+            "host": "kdc.storedsafe.com",
+            "password": "uFwWyzrAjyU4RKVdnnClXMuJ5",
+            "cryptedinfo": "Backup GPG passphrase is 3Bxq8Df2LrPpf99qT0mml8SI5Di9hY7QwDMioHvARxj1fmXRFy"
+        }
+    ]
+}
 ```
 
 ## Limitations / Known issues
 ```
 --create-vault
+--stuff-extra-fields
 ```
 > Is not yet implemented.
 
