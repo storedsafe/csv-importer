@@ -190,39 +190,39 @@ Prepare a CSV file for importing objects to StoredSafe, this can be done manuall
 ```
 $ cat file.csv
 host,username,password,info,cryptedinfo
-fw.storedsafe.com,admin,j5nJ2QQnRhp7xYwG8fExygDvD,Firewall for Stockholm office.,iLO password is k3PUibwrWMCYCtxlYgsrOiKRZZnIxA
-resolver.storedsafe.com,root,Xf6PVBdlad40sS3C7u1H6mVsD,"unbound, recursive resolver for Stockholm office",
-storedsafe.com,rolf,BoDJCrHLF4VNOyeBOuKzZocqc,Rolf Rolfsson,cryptedinfo
-storedsafe.com,sven,lKuBdy1k6HMxbVh6vRB5yW7q6,Sven Hell,cryptedinfo
-kdc.storedsafe.com,root,uFwWyzrAjyU4RKVdnnClXMuJ5,KDC located in D4K3,Backup GPG passphrase is 3Bxq8Df2LrPpf99qT0mml8SI5Di9hY7QwDMioHvARxj1fmXRFy
+fw.safe.domain.cc,admin,j5nJ2QQnRhp7xYwG8fExygDvD,Firewall for Stockholm office.,iLO password is k3PUibwrWMCYCtxlYgsrOiKRZZnIxA
+resolver.safe.domain.cc,root,Xf6PVBdlad40sS3C7u1H6mVsD,"unbound, recursive resolver for Stockholm office",
+safe.domain.cc,rolf,BoDJCrHLF4VNOyeBOuKzZocqc,Rolf Rolfsson,cryptedinfo
+safe.domain.cc,sven,lKuBdy1k6HMxbVh6vRB5yW7q6,Sven Hell,cryptedinfo
+kdc.safe.domain.cc,root,uFwWyzrAjyU4RKVdnnClXMuJ5,KDC located in D4K3,Backup GPG passphrase is 3Bxq8Df2LrPpf99qT0mml8SI5Di9hY7QwDMioHvARxj1fmXRFy
 ```
 
 Import objects into the StoredSafe appliance using the file "file.csv" as input (content as below), use a pre-authenticated session (```--rc```) and store imported objects in the "Stockholm Office" Vault on the StoredSafe server "safe.domain.cc".
 
 ```
 $ csv-importer.py --rc ~/.storedsafe-client.rc --csv file.csv --vault "Stockholm Office" --skip-first-line --verbose
-Importing "fw.storedsafe.com" into the Vault "Stockholm Office" (Vault-ID 182).
-Importing "resolver.storedsafe.com" into the Vault "Stockholm Office" (Vault-ID 182).
-Importing "storedsafe.com" into the Vault "Stockholm Office" (Vault-ID 182).
-Importing "storedsafe.com" into the Vault "Stockholm Office" (Vault-ID 182).
-Importing "kdc.storedsafe.com" into the Vault "Stockholm Office" (Vault-ID 182).
+Importing "fw.safe.domain.cc" into the Vault "Stockholm Office" (Vault-ID 182).
+Importing "resolver.safe.domain.cc" into the Vault "Stockholm Office" (Vault-ID 182).
+Importing "safe.domain.cc" into the Vault "Stockholm Office" (Vault-ID 182).
+Importing "safe.domain.cc" into the Vault "Stockholm Office" (Vault-ID 182).
+Importing "kdc.safe.domain.cc" into the Vault "Stockholm Office" (Vault-ID 182).
 Imported 5 object/s
 ```
 
-Re-running the import, csv-importer.py will detect that the objects are already present in the vault "Public Web Servers" and will avoid storing duplicates by default. (can be changed with --allow-duplicates)
+Re-running the import, csv-importer.py will detect that the objects are already present in the vault "Stockholm Office" and will avoid storing duplicates by default. (can be changed with --allow-duplicates)
 
 ```
 $ csv-importer.py --rc ~/.storedsafe-client.rc --csv file.csv --vault "Stockholm Office" --skip-first-line --verbose
-WARNING: Object "fw.storedsafe.com" (Object-ID 696) (4 field/s matched "fw.storedsafe.com") - duplicate.
-WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "fw.storedsafe.com". (Use "--allow-duplicates" to force import)
-WARNING: Object "resolver.storedsafe.com" (Object-ID 697) (4 field/s matched "resolver.storedsafe.com") - duplicate.
-WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "resolver.storedsafe.com". (Use "--allow-duplicates" to force import)
-WARNING: Object "storedsafe.com" (Object-ID 698) (4 field/s matched "storedsafe.com") - duplicate.
-WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "storedsafe.com". (Use "--allow-duplicates" to force import)
-WARNING: Object "storedsafe.com" (Object-ID 699) (4 field/s matched "storedsafe.com") - duplicate.
-WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "storedsafe.com". (Use "--allow-duplicates" to force import)
-WARNING: Object "kdc.storedsafe.com" (Object-ID 700) (4 field/s matched "kdc.storedsafe.com") - duplicate.
-WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "kdc.storedsafe.com". (Use "--allow-duplicates" to force import)
+WARNING: Object "fw.safe.domain.cc" (Object-ID 696) (4 field/s matched "fw.safe.domain.cc") - duplicate.
+WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "fw.safe.domain.cc". (Use "--allow-duplicates" to force import)
+WARNING: Object "resolver.safe.domain.cc" (Object-ID 697) (4 field/s matched "resolver.safe.domain.cc") - duplicate.
+WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "resolver.safe.domain.cc". (Use "--allow-duplicates" to force import)
+WARNING: Object "safe.domain.cc" (Object-ID 698) (4 field/s matched "safe.domain.cc") - duplicate.
+WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "safe.domain.cc". (Use "--allow-duplicates" to force import)
+WARNING: Object "safe.domain.cc" (Object-ID 699) (4 field/s matched "safe.domain.cc") - duplicate.
+WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "safe.domain.cc". (Use "--allow-duplicates" to force import)
+WARNING: Object "kdc.safe.domain.cc" (Object-ID 700) (4 field/s matched "kdc.safe.domain.cc") - duplicate.
+WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "kdc.safe.domain.cc". (Use "--allow-duplicates" to force import)
 WARNING: Skipped 5 duplicate object/s.
 ```
 
@@ -269,35 +269,35 @@ $ csv-importer.py --no-rest --csv file.csv --skip-first-line
         {
             "username": "admin",
             "info": "Firewall for Stockholm office.",
-            "host": "fw.storedsafe.com",
+            "host": "fw.safe.domain.cc",
             "password": "j5nJ2QQnRhp7xYwG8fExygDvD",
             "cryptedinfo": "iLO password is k3PUibwrWMCYCtxlYgsrOiKRZZnIxA"
         },
         {
             "username": "root",
             "info": "unbound, recursive resolver for Stockholm office",
-            "host": "resolver.storedsafe.com",
+            "host": "resolver.safe.domain.cc",
             "password": "Xf6PVBdlad40sS3C7u1H6mVsD",
             "cryptedinfo": ""
         },
         {
             "username": "rolf",
             "info": "Rolf Rolfsson",
-            "host": "storedsafe.com",
+            "host": "safe.domain.cc",
             "password": "BoDJCrHLF4VNOyeBOuKzZocqc",
             "cryptedinfo": "cryptedinfo"
         },
         {
             "username": "sven",
             "info": "Sven Hell",
-            "host": "storedsafe.com",
+            "host": "safe.domain.cc",
             "password": "lKuBdy1k6HMxbVh6vRB5yW7q6",
             "cryptedinfo": "cryptedinfo"
         },
         {
             "username": "root",
             "info": "KDC located in D4K3",
-            "host": "kdc.storedsafe.com",
+            "host": "kdc.safe.domain.cc",
             "password": "uFwWyzrAjyU4RKVdnnClXMuJ5",
             "cryptedinfo": "Backup GPG passphrase is 3Bxq8Df2LrPpf99qT0mml8SI5Di9hY7QwDMioHvARxj1fmXRFy"
         }
