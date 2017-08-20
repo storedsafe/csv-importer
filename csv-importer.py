@@ -8,8 +8,6 @@ csv-importer.py: Assist in parsing CSV files and output either a properly format
 
 from __future__ import print_function
 import sys
-import ssl
-import OpenSSL
 import csv
 import json
 import getopt
@@ -46,12 +44,13 @@ def main():
   global token, url, verbose, debug, create_vault, allow_duplicates, no_rest, skip_first, delete_extra, munch_stdin, objectname
 
   # Some default values
-  templateid = '1'
-  template = 'Server'
-  fieldnames = [ 'host', 'username', 'password', 'info', 'cryptedinfo' ]
-  separator = ','
+  _default_template = 'Server'
+  _default_fieldnames = [ 'host', 'username', 'password', 'info', 'cryptedinfo' ]
+
+  exitcode = 0
+  rc_file = os.path.expanduser('~/.storedsafe-client.rc')
   list_templates = list_fieldnames = list_vaults = False
-  user = apikey = supplied_token = storedsafe = rc_file = vaultid = vaultname = outfile = infile = ''
+  templateid = template = fieldnames = separator = user = apikey = supplied_token = storedsafe = vaultid = vaultname = outfile = infile = ''
 
   try:
    opts, args = getopt.getopt(sys.argv[1:], "s:u:a:v:t:?",\
@@ -134,15 +133,18 @@ def main():
     else:
       assert False, "Unrecognized option"
 
-  # No input file, read from stdin
-  if not infile:
-    munch_stdin = True
+  # Handle defaults
+  if not separator:  separator = ','
+  if not infile:     munch_stdin = True
 
   #
   # No connection to server required/available, just format and dump to screen or file
   #
 
   if no_rest:
+    if not template:   template = _default_template
+    if not fieldnames: fieldnames = _default_fieldnames
+
     lines = CSVRead(infile, template, fieldnames, separator)
     data = {}
     data[template] = lines
@@ -179,6 +181,25 @@ def main():
   if not authCheck():
     sys.exit()
 
+  # Handle defaults
+  if not templateid: 
+    templateid = '1'
+  else:
+    # Check if Template-ID exists, return Template name
+    template = findTemplateName(templateid)
+
+  if not template:
+    template = _default_template
+  else:
+    # Check if Template exists, return Template-ID
+    templateid = findTemplateID(template)
+
+  # Extract field names, unless given on command line
+  if not fieldnames:
+    fieldnames = _default_fieldnames
+  else:
+    fieldnames = getFieldNames(templateid)
+
   # Just list vaults available to the current logged in user
   if list_vaults:
     listVaults()
@@ -189,22 +210,10 @@ def main():
     listTemplates()
     sys.exit()
 
-  # Check if Template-ID exists, return Template name
-  if templateid:
-    template = findTemplateName(templateid)
-
-  # Check if Template exists, return Template-ID
-  if template:
-    templateid = findTemplateID(template)
-
   # List the fields in a given Template-ID
   if list_fieldnames:
     print(','.join(getFieldNames(templateid)))
     sys.exit()
-
-  # Extract field names, unless given on command line
-  if not fieldnames:
-    fieldnames = getFieldNames(templateid)
 
   # Check if Vaultname exists, returns Vault-ID
   if vaultname:
@@ -218,18 +227,23 @@ def main():
       print("ERROR: One of \"--vault\", \"--vaultid\" or \"--create-vault\" is mandatory.")
       sys.exit()
 
+  #
   # Read input and import via REST
+  #
+
   data = CSVRead(infile, template, fieldnames, separator)
-  (imported, duplicates) = insertObjects(data, templateid, fieldnames, vaultid)
+  (imported, duplicates, skipped) = insertObjects(data, templateid, fieldnames, vaultid)
 
   if imported:
-    if verbose: print("INFO: Imported %d object/s" % imported)
+    if verbose: print("Imported %d object/s" % imported)
+  if skipped: 
+    print("WARNING: Could not import %s object/s due to errors encountered during import." % skipped)
+    exitcode = 1
   if duplicates:
-    if verbose or not imported: 
-      print("WARNING: Skipped %d duplicate object/s." % duplicates)
-    sys.exit(1)
+    if verbose or not imported: print("WARNING: Skipped %d duplicate object/s." % duplicates)
+    exitcode = 2
 
-  sys.exit(0)
+  sys.exit(exitcode)
 
 def usage():
   print("Usage: %s [-vdsuat]" % sys.argv[0])
@@ -244,11 +258,11 @@ def usage():
   print(" --separator <char>             Use this character as CSV delimiter. (defaults to ,)")
   print(" --json <file>                  Store output (JSON) in this file.")
   print(" --fieldnames <fields>          Specify the mapping between columns and field names. Has to match exactly. Defaults to the Server template.")
+  print(" --objectname <field>           Use this field as objectname when storing objects. Defaults to the host field from the Server template")
   print(" --template <template>          Use this template name for import. Name has to match exactly. Defaults to the Server template.")
   print(" --templateid <template-ID>     Use this template-ID when importing.")
   print(" --vault <Vaultname>            Store imported objects in this vault. Name has to match exactly.")
   print(" --vaultid <Vault-ID>           Store imported objects in this Vault-ID.")
-  print(" --objectname <field>           Use this field as objectname when storing objects. (Defaults to the host field from the Server template)")
 # print(" --create-vault                 (Boolean) Create missing vaults.") # NOTIMPL
   print(" --allow-duplicates             (Boolean) Allow duplicates when importing.")
   print(" --no-rest                      Operate in off-line mode, do not attempt to use the REST API.")
@@ -289,6 +303,7 @@ def readrc(rc_file):
     return (server, token)
   else:
     print("ERROR: Can not open \"%s\"." % rc_file)
+    sys.exit()
 
 def passphrase(user):
   p = getpass.getpass('Enter ' + user + '\'s passphrase: ')
@@ -307,12 +322,13 @@ def login(user, key):
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
-  data = json.loads(r.content)
-  if r.ok:
-    return data["CALLINFO"]["token"]
-  else:
-    print("ERROR: %s" % data["ERRORS"][0])
+
+  if not r.ok:
+    print("ERROR: Failed to login.")
     sys.exit()
+
+  data = json.loads(r.content)
+  return data['CALLINFO']['token']
 
 def authCheck():
   global token, url, verbose, debug
@@ -323,13 +339,12 @@ def authCheck():
   except:
     print("ERROR: Can not reach \"%s\"" % url)
     sys.exit()
-
-  data = json.loads(r.content)
   if not r.ok:
     print("Not logged in.")
     sys.exit()
 
-  if data["CALLINFO"]["status"] == 'SUCCESS':
+  data = json.loads(r.content)
+  if data['CALLINFO']['status'] == 'SUCCESS':
     if debug: print("DEBUG: Authenticated using token \"%s\"." % token)
   else:
     print("ERROR: Session not authenticated with server. Token invalid?")
@@ -348,13 +363,13 @@ def findVaultID(vaultname):
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
-  data = json.loads(r.content)
   if not r.ok:
     print("ERROR: Can not find any vaults.")
     sys.exit()
 
-  for v in data["GROUP"].iteritems():
-    if vaultname == data["GROUP"][v[0]]["groupname"]:
+  data = json.loads(r.content)
+  for v in data['GROUP'].iteritems():
+    if vaultname == data['GROUP'][v[0]]['groupname']:
       vaultid = v[0]
       if debug: print("DEBUG: Found Vault \"%s\" via Vaultname as Vault-ID \"%s\"" % (vaultname, vaultid))
 
@@ -377,7 +392,7 @@ def findVaultName(vaultid):
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
-  data = json.loads(r.content)
+
   if not r.ok:
     if create_vault:
       print("WARNING: Can not find Vault-ID \"%s\", will try to create a new vault." % vaultid)
@@ -386,8 +401,9 @@ def findVaultName(vaultid):
       print("ERROR: Can not find Vault-ID \"%s\" and \"--create-vault\" not specified." % vaultid)
       sys.exit()
 
-  if data["CALLINFO"]["status"] == "SUCCESS":
-    vaultname = data["GROUP"][vaultid]["groupname"]
+  data = json.loads(r.content)
+  if data['CALLINFO']['status'] == "SUCCESS":
+    vaultname = data['GROUP'][vaultid]['groupname']
     if debug: print("DEBUG: Found Vault \"%s\" via Vault-ID \"%s\"" % (vaultname, vaultid))
   else:
     print("ERROR: Can not retreive Vaultname for Vault-ID %s." % vaultid)
@@ -409,7 +425,7 @@ def getFieldNames(templateid):
     sys.exit()
 
   data = json.loads(r.content)
-  if data["CALLINFO"]["status"] == "SUCCESS":
+  if data['CALLINFO']['status'] == "SUCCESS":
     template = data["TEMPLATE"][templateid]["INFO"]["name"]
     if debug: print("DEBUG: Found Template \"%s\" via Template-ID \"%s\"" % (template, templateid))
   else:
@@ -434,11 +450,11 @@ def listTemplates():
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
-  data = json.loads(r.content)
   if not r.ok:
     print("ERROR: Can not find any templates.")
     sys.exit()
 
+  data = json.loads(r.content)
   for v in data["TEMPLATE"].iteritems():
     template = data["TEMPLATE"][v[0]]["INFO"]["name"]
     templateid = v[0]
@@ -458,15 +474,16 @@ def listVaults():
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
-  data = json.loads(r.content)
   if not r.ok:
     print("ERROR: Can not find any vaults.")
     sys.exit()
 
-  for v in data["GROUP"].iteritems():
-    vaultname = data["GROUP"][v[0]]["groupname"]
+  data = json.loads(r.content)
+  for v in data['GROUP'].iteritems():
+    vaultname = data['GROUP'][v[0]]['groupname']
     vaultid = v[0]
-    print("Vault \"%s\" (Vault-ID \"%s\")" % (vaultname, vaultid))
+    permission = data['GROUP'][v[0]]['statustext']
+    print("Vault \"%s\" (Vault-ID \"%s\") with \"%s\" permissions." % (vaultname, vaultid, permission))
 
   return
 
@@ -481,18 +498,18 @@ def findTemplateID(template):
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
-  data = json.loads(r.content)
   if not r.ok:
     print("ERROR: Can not find any templates.")
     sys.exit()
 
+  data = json.loads(r.content)
   for v in data["TEMPLATE"].iteritems():
     if template == data["TEMPLATE"][v[0]]["INFO"]["name"]:
       templateid = v[0]
       if debug: print("DEBUG: Found Template \"%s\" as Template-ID \"%s\"" % (template, templateid))
 
   if not templateid:
-    print("ERROR: Can not find Template \"%s\"." % template)   
+    print("ERROR: Can not find Template-ID \"%s\"." % template)   
     sys.exit()
 
   return(templateid)
@@ -506,12 +523,12 @@ def findTemplateName(templateid):
   except:
     print("ERROR: No connection to \"%s\" (1)" % url)
     sys.exit()
-  data = json.loads(r.content)
   if not r.ok:
     print("ERROR: Can not find Template-ID \"%s\"." % templateid)
     sys.exit()
 
-  if data["CALLINFO"]["status"] == "SUCCESS":
+  data = json.loads(r.content)
+  if data['CALLINFO']['status'] == "SUCCESS":
     template = data["TEMPLATE"][templateid]["INFO"]["name"]
     if debug: print("DEBUG: Found Template \"%s\" via Template-ID \"%s\"" % (template, templateid))
   else:
@@ -532,7 +549,11 @@ def CSVRead(infile, template, fieldnames, separator):
       print("ERROR: Could not open \"%s\"" % infile)
       sys.exit()
 
-  reader = csv.DictReader(file, delimiter=separator, fieldnames=fieldnames, restkey="unspecified-columns")
+  try:
+    reader = csv.DictReader(file, delimiter=separator, fieldnames=fieldnames, restkey="unspecified-columns")
+  except:
+    print("ERROR: could not read CSV input.")
+    sys.exit()
 
   if skip_first:
     reader.next()
@@ -555,15 +576,14 @@ def getObjects(vaultid):
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
-  data = json.loads(r.content)
   if not r.ok:
     print("ERROR: Can not find any vaults.")
     sys.exit()
 
+  data = json.loads(r.content)
   if debug: print("DEBUG: Getting objects in Vault \"%s\" (Vault-ID %s)" % (data['GROUP'][vaultid]['groupname'], vaultid))
 
   objects = {}
-
   if (len(data['OBJECT'])):
     for v in data['OBJECT'].iteritems():
       objects[v[0]] = v[1]
@@ -580,41 +600,34 @@ def find_duplicates(line, templateid, vaultid):
   fieldnames = getFieldNames(templateid)
   objects = getObjects(vaultid)
 
-  if verbose: print("INFO: Searching thru Vault \"%s\" (Vault-ID %s) for duplicates of \"%s\"." % (vaultname, vaultid, line['objectname']))
+  if debug: print("DEBUG: Searching thru Vault \"%s\" (Vault-ID %s) for duplicates of \"%s\"." % (vaultname, vaultid, line['objectname']))
   for key in objects.keys():
-
     if objects[key]['templateid'] == templateid:
-
       if debug: print(" DEBUG: Examining object \"%s\" (Object-ID %s)" % (objects[key]['objectname'], key))
-
       if 'objectname' in objects[key]:
         if objects[key]['objectname'] == line['objectname']:
           candidate += 1
           if debug: print("   DEBUG: Field matched. (%d total matche/s)" % (candidate))
-
       for fieldname in fieldnames:
         if fieldname in objects[key]['public']:
           if debug: print("  DEBUG: Examine \"%s\": found \"%s\" (compare with \"%s\")" % (fieldname, objects[key]['public'][fieldname], line[fieldname]))
           if objects[key]['public'][fieldname] == line[fieldname]:
             candidate += 1
             if debug: print("   DEBUG: Field matched. (%d total matche/s)" % (candidate))
-
       if (candidate >= 3):
         match += 1
-        if verbose: print(" INFO: Object \"%s\" (Object-ID %s) (%d field/s matched) - Duplicate." % (objects[key]['objectname'], key, candidate))
+        if verbose: print("WARNING: Object \"%s\" (Object-ID %s) (%d field/s matched \"%s\") - duplicate." % (objects[key]['objectname'], key, candidate, line['objectname']))
       else:
         if debug: print(" DEBUG: Object \"%s\" (Object-ID %s) (%d field/s matched)" % (objects[key]['objectname'], key, candidate))
-
       candidate = 0
-
     else:
-      if debug: print("DEBUG: Wrong template (#%s), skipping." % (objects[key]['templateid']))
-
+      if debug: print("DEBUG: Incorrect template (#%s), skipping." % (objects[key]['templateid']))
   if (match >= 1):
     duplicate = True
-    if verbose: print("INFO: When importing \"%s\" to Vault \"%s\", %s object/s appeared identical, marking as a duplicate and skipping. (Use \"--allow-duplicates\" to force import)" % (line['objectname'], vaultname, match))
+    if verbose: print("WARNING: Found %s possible duplicate object/s in \"%s\" when trying to import \"%s\". (Use \"--allow-duplicates\" to force import)" % (match, vaultname, line['objectname']))
+    # if verbose: print("INFO: When importing \"%s\" to Vault \"%s\", %s other object/s in the vault appeared identical, marking as a duplicate and skipping. (Use \"--allow-duplicates\" to force import)" % (line['objectname'], vaultname, match))
   else:
-    if verbose: print("INFO: \"%s\" has no duplicates in Vault \"%s\"." % (line['objectname'], vaultname))
+    if debug: print("DEBUG: \"%s\" has no duplicates in Vault \"%s\"." % (line['objectname'], vaultname))
 
   return(duplicate)
 
@@ -622,7 +635,9 @@ def insertObjects(lines, templateid, fieldnames, vaultid):
   global token, url, verbose, create_vault, allow_duplicates, objectname
 
   exists = False
-  imported = duplicates = 0
+  imported = duplicates = skipped = 0
+
+  vaultname = findVaultName(vaultid)
 
   for line in lines:
     line['objectname'] = line[objectname]
@@ -636,14 +651,17 @@ def insertObjects(lines, templateid, fieldnames, vaultid):
       line['groupid'] = vaultid
       line['parentid'] = "0"
       r = requests.post(url + '/object', json=line)
+      data = json.loads(r.content)
       if not r.ok:
-        print("ERROR: Could not save object \"%s\"" % line['objectname'])
-        sys.exit()
-      imported += 1
+        skipped += 1
+        print("ERROR: Could not import \"%s\" into the Vault \"%s\". Error from server was: \"%s\"." % (line['objectname'], vaultname, data['ERRORS'][0]))
+      else:
+        imported += 1
+        if verbose: print("Importing \"%s\" into the Vault \"%s\" (Vault-ID %s)." % (line[objectname], vaultname, vaultid))
     else:
       duplicates += 1
 
-  return(imported, duplicates)
+  return(imported, duplicates, skipped)
 
 if __name__ == '__main__':
   main()
