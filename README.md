@@ -6,7 +6,7 @@ Imports to StoredSafe can either be done thru the reference web UI implementatio
 
 csv-importer.py can assist in both modes. By specifying the ```--no-rest``` option, csv-importer.py will operate in in off-line mode and translating input to the required JSON structures and store it in a file (```--json``` option), or output to stdout (which is the default option).
 
-csv-importer.py can also utilize StoredSafe's REST API to directly import objects. If the ```--no-rest``` option is not specified, csv-importer.py will operate in REST API mode and will require either that pre-authentication has been performed by the StoredSafe authenticator CLI module (```storedsafe-authenticator.py```) and stored in an init file which location can be specified with the ```--rc``` option. Other authentication options includes specifying a valid token (```--token```) or perform an on-line one-shot authentication (```--user``` and ```--apikey```)
+csv-importer.py can also utilize StoredSafe's REST API to directly import objects. If the ```--no-rest``` option is not specified, csv-importer.py will operate in REST API mode and will require either that pre-authentication has been performed by the StoredSafe token handler CLI module (```storedsafe-tokenhandler.py```) and stored in an init file which location can be specified with the ```--rc``` option. Other authentication options includes specifying a valid token (```--token```) or perform an on-line one-shot authentication (```--user``` and ```--apikey```)
 
 The script is written in Python v2 and has been tested on macOS Sierra and on Linux (any fairly recent version of Ubuntu or Red Hat should work fine).
 
