@@ -6,7 +6,9 @@ Imports to StoredSafe can either be done thru the reference web UI implementatio
 
 csv-importer.py can assist in both modes. By specifying the ```--no-rest``` option, csv-importer.py will operate in in off-line mode and translating input to the required JSON structures and store it in a file (```--json``` option), or output to stdout (which is the default option).
 
-csv-importer.py can also utilize StoredSafe's REST API to directly import objects. If the ```--no-rest``` option is not specified, csv-importer.py will operate in REST API mode and will require either that pre-authentication has been performed by the StoredSafe token handler CLI module (```storedsafe-tokenhandler.py```) and stored in an init file which location can be specified with the ```--rc``` option. Other authentication options includes specifying a valid token (```--token```) or perform an on-line one-shot authentication (```--user``` and ```--apikey```)
+csv-importer.py can also utilize StoredSafe's REST API to directly import objects. If the ```--no-rest``` option is not specified, csv-importer.py will operate in REST API mode and will require either that pre-authentication has been performed by the StoredSafe token handler CLI module (```storedsafe-tokenhandler.py```) and stored in an init file which location can be specified with the ```--rc``` option. 
+
+Other authentication options includes specifying a valid token (```--token```) or perform an on-line one-shot authentication (```--user``` and ```--apikey```)
 
 The script is written in Python v2 and has been tested on macOS Sierra and on Linux (any fairly recent version of Ubuntu or Red Hat should work fine).
 
@@ -16,7 +18,7 @@ This script requires Python v2 and some libraries.
 
 It has been developed and tested using Python v2.7.10, on macOS Sierra 10.12.6.
 
-Most of the required libraries are installed by default,  but others require manual installation. ("requests, requests_toolbelt, netaddr)
+Most of the required libraries are installed by default,  but others require manual installation. (requests, requests_toolbelt, netaddr)
 
 **requests:**
 ```
@@ -70,27 +72,27 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 ```
 --verbose
 ``` 
-> Add verbose output
+> Add verbose output.
 
 ```
 --debug
 ```
-> Add debug output
+> Add debug output.
 
 ```
 --rc <RC file>
 ```
-> Obtain credentials (token) and server information from this file. (Defaults to ~/.storedsafe-client.rc)
+> Obtain credentials (token) and server information from this file. (Enabled by default to ```~/.storedsafe-client.rc```)
 
 ```
 --storedsafe|-s <server>
 ```
-> Upload certificates to this StoredSafe server
+> Upload certificates to this StoredSafe server.
 
 ```
 --user|-u <user>
 ```
-> Authenticate as this StoredSafe user
+> Authenticate as this StoredSafe user.
 
 ```
 --apikey|-a <apikey>
@@ -110,7 +112,7 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 ```
 --separator
 ```
-> Use this character as CSV separator (single character)
+> Use this character as CSV separator. (Single character)
 
 ```
 --json
@@ -130,7 +132,7 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 ```
 --templateid
 ```
-> Instead of using the template name (```--template```), you can specify the Template-ID (which is unique per template).
+> Instead of using the template name (```--template```), you can specify the Template-ID which is unique per template.
 
 ```
 --vault|-v <Vaultname>
@@ -155,7 +157,7 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 ```
 --no-rest
 ```
-> Do not use the REST API, operate completely in off-line mode. Result displayed to screen (default) or can be saved in a file (```--json```)
+> Do not use the REST API, operate completely in off-line mode. Result displayed to screen (default) or can be saved in a file. (```--json```)
 
 ```
 --skip-first-line
