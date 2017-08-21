@@ -80,7 +80,7 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 ```
 --rc <RC file>
 ```
-> Obtain credentials (roken) and server information from this file.
+> Obtain credentials (token) and server information from this file. (Defaults to ~/.storedsafe-client.rc)
 
 ```
 --storedsafe|-s <server>
@@ -120,7 +120,7 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 ```
 --fieldnames
 ```
-> Use this comma separated list as input field names. See ````--list-fieldnames``` for valid field names per template.
+> Use this comma separated list as input field names. See ```--list-fieldnames``` for valid field names per template.
 
 ```
 --template
