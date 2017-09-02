@@ -16,7 +16,6 @@ import os.path
 import re
 import pprint
 import requests
-from requests_toolbelt.multipart.encoder import MultipartEncoder
  
 __author__     = "Fredrik Soderblom"
 __copyright__  = "Copyright 2017, AB StoredSafe"
@@ -53,7 +52,7 @@ def main():
   templateid = template = fieldnames = separator = user = apikey = supplied_token = storedsafe = vaultid = vaultname = outfile = infile = ''
 
   try:
-   opts, args = getopt.getopt(sys.argv[1:], "s:u:a:v:t:?",\
+   opts, args = getopt.getopt(sys.argv[1:], "s:u:a:t:?",\
     [ "verbose", "debug", "storedsafe=", "token=", "user=", "apikey=", "vault=", "vaultid=",\
      "template=", "templateid=", "rc=", "csv=", "json=", "create-vault", "allow-duplicates",\
      "no-rest", "fieldnames=", "separator=", "objectname=", "skip-first-line", "remove-extra-columns",\
@@ -93,7 +92,7 @@ def main():
         sys.exit()
     elif opt in ("--rc"):
       rc_file = arg
-    elif opt in ("-v", "--vault"):
+    elif opt in ("--vault"):
       vaultname = arg
     elif opt in ("--vaultid"):
       vaultid = arg
@@ -247,8 +246,8 @@ def main():
 
 def usage():
   print("Usage: %s [-vdsuat]" % sys.argv[0])
-  print(" --verbose (or -v)              (Boolean) Enable verbose output.")
-  print(" --debug (or -d)                (Boolean) Enable debug output.")
+  print(" --verbose                      (Boolean) Enable verbose output.")
+  print(" --debug                        (Boolean) Enable debug output.")
   print(" --rc <rc file>                 Use this file to obtain a valid token and a server address.")
   print(" --storedsafe (or -s) <Server>  Use this StoredSafe server.")
   print(" --user (or -u) <user>          Authenticate as this user to the StoredSafe server.")
@@ -625,7 +624,6 @@ def find_duplicates(line, templateid, vaultid):
   if (match >= 1):
     duplicate = True
     if verbose: print("WARNING: Found %s possible duplicate object/s in \"%s\" when trying to import \"%s\". (Use \"--allow-duplicates\" to force import)" % (match, vaultname, line['objectname']))
-    # if verbose: print("INFO: When importing \"%s\" to Vault \"%s\", %s other object/s in the vault appeared identical, marking as a duplicate and skipping. (Use \"--allow-duplicates\" to force import)" % (line['objectname'], vaultname, match))
   else:
     if debug: print("DEBUG: \"%s\" has no duplicates in Vault \"%s\"." % (line['objectname'], vaultname))
 
