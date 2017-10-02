@@ -20,7 +20,7 @@ import requests
 __author__     = "Fredrik Soderblom"
 __copyright__  = "Copyright 2017, AB StoredSafe"
 __license__    = "GPL"
-__version__    = "1.0.1"
+__version__    = "1.0.2"
 __maintainer__ = "Fredrik Soderblom"
 __email__      = "fredrik@storedsafe.com"
 __status__     = "Production"
@@ -478,11 +478,14 @@ def listVaults():
     sys.exit()
 
   data = json.loads(r.content)
-  for v in data['GROUP'].iteritems():
-    vaultname = data['GROUP'][v[0]]['groupname']
-    vaultid = v[0]
-    permission = data['GROUP'][v[0]]['statustext']
-    print("Vault \"%s\" (Vault-ID \"%s\") with \"%s\" permissions." % (vaultname, vaultid, permission))
+  if (len(data['GROUP'])): # Unless result is empty
+    for v in data['GROUP'].iteritems():
+      vaultname = data['GROUP'][v[0]]['groupname']
+      vaultid = v[0]
+      permission = data['GROUP'][v[0]]['statustext']
+      print("Vault \"%s\" (Vault-ID \"%s\") with \"%s\" permissions." % (vaultname, vaultid, permission))
+  else:
+    print("You don't have access to any vaults. Bohoo.")
 
   return
 
