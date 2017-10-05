@@ -56,7 +56,8 @@ def main():
     [ "verbose", "debug", "storedsafe=", "token=", "user=", "apikey=", "vault=", "vaultid=",\
      "template=", "templateid=", "rc=", "csv=", "json=", "create-vault", "allow-duplicates",\
      "no-rest", "fieldnames=", "separator=", "objectname=", "skip-first-line", "remove-extra-columns",\
-     "list-templates", "list-fieldnames", "list-vaults", "help" ])
+     "list-templates", "list-fieldnames", "list-vaults", "skip", "remove", "vaults", "templates",\
+     "fieldnames", "help" ])
   except getopt.GetoptError as err:
     print("%s" % str(err))
     usage()
