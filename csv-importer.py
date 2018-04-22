@@ -320,8 +320,6 @@ def OTP(user):
   return(otp)
 
 def login(user, key):
-  global url, basic_auth_user, basic_auth_pw
-
   payload = { 'username': user, 'keys': key }
   try:
     if basic_auth_user:
@@ -340,8 +338,6 @@ def login(user, key):
   return data['CALLINFO']['token']
 
 def authCheck():
-  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
-
   payload = { 'token': token }
   try:
     if basic_auth_user:
@@ -365,10 +361,7 @@ def authCheck():
   return(True)
 
 def findVaultID(vaultname):
-  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
-
   vaultid = False
-
   payload = { 'token': token }
   try:
     if basic_auth_user:
@@ -399,8 +392,6 @@ def findVaultID(vaultname):
   return(vaultid)
 
 def findVaultName(vaultid):
-  global token, url, create_vault, verbose, debug, basic_auth_user, basic_auth_pw
-
   payload = { 'token': token }
   try:
     if basic_auth_user:
@@ -430,8 +421,6 @@ def findVaultName(vaultid):
   return(vaultname)
 
 def getFieldNames(templateid):
-  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
-
   payload = { 'token': token }
   try:
     if basic_auth_user:
@@ -460,8 +449,6 @@ def getFieldNames(templateid):
   return fieldnames
 
 def listTemplates():
-  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
-
   template = False
   templateid = False
 
@@ -487,11 +474,8 @@ def listTemplates():
   return
 
 def listVaults():
-  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
-
   vaultname = False
   vaultid = False
-
   payload = { 'token': token }
   try:
     if basic_auth_user:
@@ -518,10 +502,7 @@ def listVaults():
   return
 
 def findTemplateID(template):
-  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
-
   templateid = False
-
   payload = { 'token': token }
   try:
     if basic_auth_user:
@@ -548,8 +529,6 @@ def findTemplateID(template):
   return(templateid)
 
 def findTemplateName(templateid):
-  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
-
   payload = { 'token': token }
   try:
     if basic_auth_user:
@@ -574,8 +553,6 @@ def findTemplateName(templateid):
   return(template)
 
 def CSVRead(infile, template, fieldnames, separator):
-  global skip_first, delete_extra, munch_stdin
-
   if munch_stdin:
     file = sys.stdin
   else:
@@ -604,8 +581,6 @@ def CSVRead(infile, template, fieldnames, separator):
   return lines
 
 def getObjects(vaultid):
-  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
-
   payload = { 'token': token }
   try:
     if basic_auth_user:
@@ -630,11 +605,8 @@ def getObjects(vaultid):
   return objects
 
 def find_duplicates(line, templateid, vaultid):
-  global objectname
-
   candidate = match = 0
   duplicate = False
-
   vaultname = findVaultName(vaultid)
   fieldnames = getFieldNames(templateid)
   objects = getObjects(vaultid)
@@ -670,11 +642,8 @@ def find_duplicates(line, templateid, vaultid):
   return(duplicate)
 
 def insertObjects(lines, templateid, fieldnames, vaultid):
-  global token, url, verbose, create_vault, allow_duplicates, objectname, basic_auth_user, basic_auth_pw
-
   exists = False
   imported = duplicates = skipped = 0
-
   vaultname = findVaultName(vaultid)
 
   for line in lines:
