@@ -18,9 +18,9 @@ import pprint
 import requests
  
 __author__     = "Fredrik Soderblom"
-__copyright__  = "Copyright 2017, AB StoredSafe"
+__copyright__  = "Copyright 2018, AB StoredSafe"
 __license__    = "GPL"
-__version__    = "1.0.2"
+__version__    = "1.0.3"
 __maintainer__ = "Fredrik Soderblom"
 __email__      = "fredrik@storedsafe.com"
 __status__     = "Production"
@@ -37,19 +37,25 @@ no_rest          = False
 skip_first       = False
 delete_extra     = False
 munch_stdin      = False
+basic_auth_user  = False
+basic_auth_pw    = False
 objectname       = 'host'
 
 def main():
-  global token, url, verbose, debug, create_vault, allow_duplicates, no_rest, skip_first, delete_extra, munch_stdin, objectname
+  global token, url, verbose, debug, create_vault, allow_duplicates, no_rest, skip_first, delete_extra, munch_stdin, basic_auth_user, basic_auth_pw, objectname
 
   # Some default values
   _default_template = 'Server'
   _default_fieldnames = [ 'host', 'username', 'password', 'info', 'cryptedinfo' ]
 
   exitcode = 0
-  rc_file = os.path.expanduser('~/.storedsafe-client.rc')
   list_templates = list_fieldnames = list_vaults = False
-  templateid = template = fieldnames = separator = user = apikey = supplied_token = storedsafe = vaultid = vaultname = outfile = infile = ''
+  templateid = template = fieldnames = separator = False
+  user = apikey = storedsafe = vaultid = vaultname = False
+  rc_file = supplied_token = outfile = infile = False
+
+  if os.path.isfile(os.path.expanduser('~/.storedsafe-client.rc')):
+    rc_file = os.path.expanduser('~/.storedsafe-client.rc')
 
   try:
    opts, args = getopt.getopt(sys.argv[1:], "s:u:a:t:?",\
@@ -57,7 +63,7 @@ def main():
      "template=", "templateid=", "rc=", "csv=", "json=", "create-vault", "allow-duplicates",\
      "no-rest", "fieldnames=", "separator=", "objectname=", "skip-first-line", "remove-extra-columns",\
      "list-templates", "list-fieldnames", "list-vaults", "skip", "remove", "vaults", "templates",\
-     "fieldnames", "help" ])
+     "fieldnames", "basic-auth-user=", "help" ])
   except getopt.GetoptError as err:
     print("%s" % str(err))
     usage()
@@ -127,6 +133,8 @@ def main():
       list_templates = True
     elif opt in ("--list-fieldnames", "--fieldnames"):
       list_fieldnames = True
+    elif opt in ("--basic-auth-user"):
+      (basic_auth_user, basic_auth_pw) = arg.split(':')
     elif opt in ("-?", "--help"):
       usage()
       sys.exit()
@@ -162,8 +170,11 @@ def main():
   # REST mode, on-line importing
   #
 
+  # If token supplied on cmdline, use it
   if supplied_token:
     token = supplied_token
+
+  # If we have a rc file, parse it
   if rc_file:
     (storedsafe, token) = readrc(rc_file)
   
@@ -272,6 +283,7 @@ def usage():
   print(" --list-vaults                  List all vaults accessible to the authenticated user.")
   print(" --list-templates               List all available templates.")
   print(" --list-fieldnames              List all fieldnames in the specified template. (--template or --templateid)")
+  print(" --basic-auth-user <user:pw>    Specify the user name and password to use for HTTP Basic Authentication")
   print("\nUsing REST API and interactive login:")
   print("$ %s --storedsafe safe.domain.cc --user bob --apikey myapikey --csv file.csv --vault \"Public Web Servers\" --verbose" % sys.argv[0])
   print("\nUsing REST API and pre-authenticated login:")
@@ -280,30 +292,24 @@ def usage():
   print("$ %s --no-rest --csv file.csv --json file.json --template Login --fieldnames host,username,password" % sys.argv[0])
 
 def readrc(rc_file):
+  token = server = False
   if os.path.isfile(rc_file):
     f = open(rc_file, 'rU')
     for line in f:
       if "token" in line:
         token = re.sub('token:([a-zA-Z0-9]+)\n$', r'\1', line)
-        if token == 'none':
-          print("ERROR: No valid token found in \"%s\". Have you logged in?" % rc_file)
-          sys.exit()
+        if token == 'none': token = False
       if "mysite" in line:
         server = re.sub('mysite:([a-zA-Z0-9.]+)\n$', r'\1', line)
-        if server == 'none':
-          print("ERROR: No valid server specified in \"%s\". Have you logged in?" % rc_file)
-          sys.exit()
+        if server == 'none': server = False
     f.close()
-    if not token:
-      print("ERROR: Could not find a valid token in \"%s\"" % rc_file)
-      sys.exit()
-    if not server:
-      print("ERROR: Could not find a valid server in \"%s\"" % rc_file)
-      sys.exit()
+    if not token: print("INFO: Could not find a valid token in \"%s\", skipping it." % rc_file)
+    if not server: print("INFO: Could not find a valid server in \"%s\", skipping it." % rc_file)
     return (server, token)
   else:
     print("ERROR: Can not open \"%s\"." % rc_file)
-    sys.exit()
+
+  return (server, token)
 
 def passphrase(user):
   p = getpass.getpass('Enter ' + user + '\'s passphrase: ')
@@ -314,11 +320,15 @@ def OTP(user):
   return(otp)
 
 def login(user, key):
-  global url
+  global url, basic_auth_user, basic_auth_pw
 
   payload = { 'username': user, 'keys': key }
   try:
-    r = requests.post(url + '/auth', data=json.dumps(payload))
+    if basic_auth_user:
+      if debug: print("DEBUG: Doing HTTP Basic Auth using \"%s\"." % basic_auth_user)
+      r = requests.post(url + '/auth', data=json.dumps(payload), auth=(basic_auth_user, basic_auth_pw))
+    else:
+      r = requests.post(url + '/auth', data=json.dumps(payload))
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
