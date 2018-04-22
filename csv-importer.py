@@ -59,7 +59,7 @@ def main():
 
   try:
    opts, args = getopt.getopt(sys.argv[1:], "s:u:a:t:?",\
-    [ "verbose", "debug", "storedsafe=", "token=", "user=", "apikey=", "vault=", "vaultid=",\
+    [ "verbose", "debug", "storedsafe=", "token=", "user=", "apikey=", "vault=", "vault-id=",\
      "template=", "templateid=", "rc=", "csv=", "json=", "create-vault", "allow-duplicates",\
      "no-rest", "fieldnames=", "separator=", "objectname=", "skip-first-line", "remove-extra-columns",\
      "list-templates", "list-fieldnames", "list-vaults", "skip", "remove", "vaults", "templates",\
@@ -101,7 +101,7 @@ def main():
       rc_file = arg
     elif opt in ("--vault"):
       vaultname = arg
-    elif opt in ("--vaultid"):
+    elif opt in ("--vault-id"):
       vaultid = arg
     elif opt in ("--template"):
       template = arg
@@ -235,7 +235,7 @@ def main():
     vaultname = findVaultName(vaultid)
   else:
     if not create_vault:
-      print("ERROR: One of \"--vault\", \"--vaultid\" or \"--create-vault\" is mandatory.")
+      print("ERROR: One of \"--vault\", \"--vault-id\" or \"--create-vault\" is mandatory.")
       sys.exit()
 
   #
