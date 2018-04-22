@@ -325,7 +325,6 @@ def login(user, key):
   payload = { 'username': user, 'keys': key }
   try:
     if basic_auth_user:
-      if debug: print("DEBUG: Doing HTTP Basic Auth using \"%s\"." % basic_auth_user)
       r = requests.post(url + '/auth', data=json.dumps(payload), auth=(basic_auth_user, basic_auth_pw))
     else:
       r = requests.post(url + '/auth', data=json.dumps(payload))
@@ -341,11 +340,14 @@ def login(user, key):
   return data['CALLINFO']['token']
 
 def authCheck():
-  global token, url, verbose, debug
+  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
 
   payload = { 'token': token }
   try:
-    r = requests.post(url + '/auth/check', data=json.dumps(payload))
+    if basic_auth_user:
+      r = requests.post(url + '/auth/check', data=json.dumps(payload), auth=(basic_auth_user, basic_auth_pw))
+    else:
+      r = requests.post(url + '/auth/check', data=json.dumps(payload))
   except:
     print("ERROR: Can not reach \"%s\"" % url)
     sys.exit()
@@ -363,13 +365,16 @@ def authCheck():
   return(True)
 
 def findVaultID(vaultname):
-  global token, url, verbose, debug
+  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
 
   vaultid = False
 
   payload = { 'token': token }
   try:
-    r = requests.get(url + '/vault', params=payload)
+    if basic_auth_user:
+      r = requests.get(url + '/vault', params=payload, auth=(basic_auth_user, basic_auth_pw))
+    else:
+      r = requests.get(url + '/vault', params=payload)
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
@@ -394,11 +399,14 @@ def findVaultID(vaultname):
   return(vaultid)
 
 def findVaultName(vaultid):
-  global token, url, create_vault, verbose, debug
+  global token, url, create_vault, verbose, debug, basic_auth_user, basic_auth_pw
 
   payload = { 'token': token }
   try:
-    r = requests.get(url + '/vault/' + vaultid, params=payload)
+    if basic_auth_user:
+      r = requests.get(url + '/vault/' + vaultid, params=payload, auth=(basic_auth_user, basic_auth_pw))
+    else:
+      r = requests.get(url + '/vault/' + vaultid, params=payload)
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
@@ -422,11 +430,14 @@ def findVaultName(vaultid):
   return(vaultname)
 
 def getFieldNames(templateid):
-  global token, url, verbose, debug
+  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
 
   payload = { 'token': token }
   try:
-    r = requests.get(url + '/template/' + templateid, params=payload)
+    if basic_auth_user:
+      r = requests.get(url + '/template/' + templateid, params=payload, auth=(basic_auth_user, basic_auth_pw))
+    else:
+      r = requests.get(url + '/template/' + templateid, params=payload)
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
@@ -449,14 +460,17 @@ def getFieldNames(templateid):
   return fieldnames
 
 def listTemplates():
-  global token, url, verbose, debug
+  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
 
   template = False
   templateid = False
 
   payload = { 'token': token }
   try:
-    r = requests.get(url + '/template', params=payload)
+    if basic_auth_user:
+      r = requests.get(url + '/template', params=payload, auth=(basic_auth_user, basic_auth_pw))
+    else:
+      r = requests.get(url + '/template', params=payload)
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
@@ -473,14 +487,17 @@ def listTemplates():
   return
 
 def listVaults():
-  global token, url, verbose, debug
+  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
 
   vaultname = False
   vaultid = False
 
   payload = { 'token': token }
   try:
-    r = requests.get(url + '/vault', params=payload)
+    if basic_auth_user:
+      r = requests.get(url + '/vault', params=payload, auth=(basic_auth_user, basic_auth_pw))
+    else:
+      r = requests.get(url + '/vault', params=payload)
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
@@ -501,13 +518,16 @@ def listVaults():
   return
 
 def findTemplateID(template):
-  global token, url, verbose, debug
+  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
 
   templateid = False
 
   payload = { 'token': token }
   try:
-    r = requests.get(url + '/template', params=payload)
+    if basic_auth_user:
+      r = requests.get(url + '/template', params=payload, auth=(basic_auth_user, basic_auth_pw))
+    else:
+      r = requests.get(url + '/template', params=payload)
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
@@ -528,11 +548,14 @@ def findTemplateID(template):
   return(templateid)
 
 def findTemplateName(templateid):
-  global token, url, verbose, debug
+  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
 
   payload = { 'token': token }
   try:
-    r = requests.get(url + '/template/' + templateid, params=payload)
+    if basic_auth_user:
+      r = requests.get(url + '/template/' + templateid, params=payload, auth=(basic_auth_user, basic_auth_pw))
+    else:
+      r = requests.get(url + '/template/' + templateid, params=payload)
   except:
     print("ERROR: No connection to \"%s\" (1)" % url)
     sys.exit()
@@ -581,11 +604,14 @@ def CSVRead(infile, template, fieldnames, separator):
   return lines
 
 def getObjects(vaultid):
-  global token, url, verbose, debug
+  global token, url, verbose, debug, basic_auth_user, basic_auth_pw
 
   payload = { 'token': token }
   try:
-    r = requests.get(url + '/vault/' + vaultid, params=payload)
+    if basic_auth_user:
+      r = requests.get(url + '/vault/' + vaultid, params=payload, auth=(basic_auth_user, basic_auth_pw))
+    else:
+      r = requests.get(url + '/vault/' + vaultid, params=payload)
   except:
     print("ERROR: No connection to \"%s\"" % url)
     sys.exit()
@@ -644,7 +670,7 @@ def find_duplicates(line, templateid, vaultid):
   return(duplicate)
 
 def insertObjects(lines, templateid, fieldnames, vaultid):
-  global token, url, verbose, create_vault, allow_duplicates, objectname
+  global token, url, verbose, create_vault, allow_duplicates, objectname, basic_auth_user, basic_auth_pw
 
   exists = False
   imported = duplicates = skipped = 0
@@ -662,7 +688,10 @@ def insertObjects(lines, templateid, fieldnames, vaultid):
       line['templateid'] = templateid
       line['groupid'] = vaultid
       line['parentid'] = "0"
-      r = requests.post(url + '/object', json=line)
+      if basic_auth_user:
+        r = requests.post(url + '/object', json=line, auth=(basic_auth_user, basic_auth_pw))
+      else:
+        r = requests.post(url + '/object', json=line)
       data = json.loads(r.content)
       if not r.ok:
         skipped += 1
