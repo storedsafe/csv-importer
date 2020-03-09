@@ -74,8 +74,8 @@ def main():
     [ "verbose", "debug", "storedsafe=", "token=", "user=", "apikey=", "vault=", "vault-id=",\
      "template=", "templateid=", "rc=", "csv=", "json=", "create-vault", "allow-duplicates",\
      "no-rest", "fieldnames=", "separator=", "objectname=", "skip-first-line", "remove-extra-columns",\
-     "stuff-extra=", "list-templates", "list-fieldnames", "list-vaults", "skip", "remove", "vaults",\
-     "templates", "fieldnames", "basic-auth-user=", "policy=", "description=", "help" ])
+     "stuff-extra=", "list-templates", "list-fieldnames", "list-vaults",\
+     "basic-auth-user=", "policy=", "description=", "help" ])
   except getopt.GetoptError as err:
     print(("%s" % str(err)))
     usage()
@@ -135,19 +135,19 @@ def main():
       allow_duplicates = True
     elif opt in ("--no-rest"):
       no_rest = True
-    elif opt in ("--skip-first-line", "--skip"):
+    elif opt in ("--skip-first-line"):
       skip_first = True
-    elif opt in ("--remove-extra-columns", "--remove"):
+    elif opt in ("--remove-extra-columns"):
       delete_extra = True
       stuff_extra = False
     elif opt in (" --stuff-extra"):
       stuff_extra = arg
       delete_extra = False
-    elif opt in ("--list-vaults", "--vaults"):
+    elif opt in ("--list-vaults"):
       list_vaults = True
-    elif opt in ("--list-templates", "--templates"):
+    elif opt in ("--list-templates"):
       list_templates = True
-    elif opt in ("--list-fieldnames", "--fieldnames"):
+    elif opt in ("--list-fieldnames"):
       list_fieldnames = True
     elif opt in ("--basic-auth-user"):
       (basic_auth_user, basic_auth_pw) = arg.split(':')
