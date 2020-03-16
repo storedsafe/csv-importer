@@ -14,7 +14,7 @@ The script is written in Python v2 and has been tested on macOS Sierra and on Li
 
 ## Installation instructions
 
-This script requires Python v3 and some libraries. 
+This script requires Python v3 and some libraries.
 
 It has been developed and tested using Python v3.7.4, on macOS Sierra 10.15.3.
 
@@ -23,7 +23,7 @@ Most of the required libraries are installed by default, but others require manu
 **requests:**
 
 ```
-sudo pip install -r requirements.txt 
+sudo pip install -r requirements.txt
 ```
 or
 
@@ -64,7 +64,7 @@ Usage: csv-importer.py [-vdsuat]
  --list-vaults                  List all vaults accessible to the authenticated user.
  --list-templates               List all available templates.
  --list-fieldnames              List all fieldnames in the specified template. (--template or --templateid)
- 
+
 Using REST API and interactive login:
 $ csv-importer.py --storedsafe safe.domain.cc --user bob --apikey myapikey --csv file.csv --vault "Public Web Servers" --verbose
 

@@ -6,7 +6,6 @@ csv-importer.py: Assist in parsing CSV files and output either a properly format
   for import into StoredSafe or utilize the REST API to do a direct import to StoredSafe.
 """
 
-
 import sys
 import csv
 import json
@@ -15,7 +14,6 @@ import getpass
 import os.path
 import re
 import requests
-import pprint
  
 __author__     = "Fredrik Soderblom"
 __copyright__  = "Copyright 2020, AB StoredSafe"
@@ -47,7 +45,7 @@ vaultdescription = 'Created by csv-importer.'
 
 def main():
   global token, url, verbose, debug, create_vault, allow_duplicates, no_rest, skip_first, delete_extra,\
-     stuff_extra, munch_stdin, basic_auth_user, basic_auth_pw, objectname
+     stuff_extra, munch_stdin, basic_auth_user, basic_auth_pw, objectname, vaultpolicy, vaultdescription
 
   # Some default values
   _default_template = 'Server'
@@ -64,16 +62,17 @@ def main():
   list_templates = list_fieldnames = list_vaults = False
   templateid = template = fieldnames = separator = False
   user = apikey = storedsafe = vaultid = vaultname = False
-  rc_file = supplied_token = outfile = infile = False
+  rc_file = supplied_token = supplied_server = outfile = infile = False
 
   if os.path.isfile(os.path.expanduser('~/.storedsafe-client.rc')):
     rc_file = os.path.expanduser('~/.storedsafe-client.rc')
 
   try:
    opts, args = getopt.getopt(sys.argv[1:], "s:u:a:t:?",\
-    [ "verbose", "debug", "storedsafe=", "token=", "user=", "apikey=", "vault=", "vault-id=",\
-     "template=", "templateid=", "rc=", "csv=", "json=", "create-vault", "allow-duplicates",\
-     "no-rest", "fieldnames=", "separator=", "objectname=", "skip-first-line", "remove-extra-columns",\
+    [ "verbose", "debug", "storedsafe=", "server=", "token=", "user=", "apikey=",\
+     "vault=", "vaultid=", "template=", "templateid=", "rc=", "csv=", "json=", \
+     "create-vault", "allow-duplicates", "no-rest", "fieldnames=", "separator=",\
+     "objectname=", "skip-first-line", "remove-extra-columns",\
      "stuff-extra=", "list-templates", "list-fieldnames", "list-vaults",\
      "basic-auth-user=", "policy=", "description=", "help" ])
   except getopt.GetoptError as err:
@@ -93,8 +92,8 @@ def main():
     elif opt in ("--debug"):
       debug = True
       verbose = True
-    elif opt in ("-s", "--storedsafe"):
-      storedsafe = arg
+    elif opt in ("-s", "--storedsafe", "--server"):
+      supplied_server = arg
     elif opt in ("-u", "--user"):
       user = arg
     elif opt in ("-a", "--apikey"):
@@ -113,7 +112,7 @@ def main():
       rc_file = arg
     elif opt in ("--vault"):
       vaultname = arg
-    elif opt in ("--vault-id"):
+    elif opt in ("--vaultid"):
       vaultid = arg
     elif opt in ("--template"):
       template = arg
@@ -140,7 +139,7 @@ def main():
     elif opt in ("--remove-extra-columns"):
       delete_extra = True
       stuff_extra = False
-    elif opt in (" --stuff-extra"):
+    elif opt in ("--stuff-extra"):
       stuff_extra = arg
       delete_extra = False
     elif opt in ("--list-vaults"):
@@ -151,6 +150,10 @@ def main():
       list_fieldnames = True
     elif opt in ("--basic-auth-user"):
       (basic_auth_user, basic_auth_pw) = arg.split(':')
+    elif opt in ("--policy"):
+      vaultpolicy = arg
+    elif opt in ("--description"):
+      vaultdescription = arg
     elif opt in ("-?", "--help"):
       usage()
       sys.exit()
@@ -166,8 +169,20 @@ def main():
   #
 
   if no_rest:
-    if not template:   template = _default_template
-    if not fieldnames: fieldnames = _std_templates[str(template)]
+    if list_vaults:
+      print('Not supported in off-line mode.')
+      sys.exit()
+
+    if not template:
+      template = _default_template
+    if not fieldnames:
+      if template in _std_templates:
+        fieldnames = _std_templates[template]
+      else:
+        print('ERROR: Can not find Template-ID \"' + template + '\"')
+        print('Builtin templates: ', end='')
+        print(*_std_templates, sep=', ')
+        sys.exit()
 
     if list_templates:
       print('Builtin templates: ', end='')
@@ -175,7 +190,7 @@ def main():
       sys.exit()
 
     if list_fieldnames:
-      print(*_std_templates[str(template)], sep=',')
+      print(*_std_templates[template], sep=',')
       sys.exit()
 
     lines = CSVRead(infile, template, fieldnames, separator)
@@ -195,24 +210,33 @@ def main():
   # REST mode, on-line importing
   #
 
-  # If token supplied on cmdline, use it
-  if supplied_token:
-    token = supplied_token
-
   # If we have a rc file, parse it
   if rc_file:
     (storedsafe, token) = readrc(rc_file)
-  
-  url = "https://" + storedsafe + "/api/1.0"
+  else:
+    print('Can not find an RC file. Either use the tokenhandler or supply needed information manually.')
+
+  # If token or server supplied on cmdline, use them
+  if supplied_token:
+    token = supplied_token
+  if supplied_server:
+    storedsafe = supplied_server
 
   if not token:
     if user and apikey:
-      pp = passphrase(user)
+      password = passphrase(user)
       otp = OTP(user)
-      token = login(user, pp + apikey + otp)
+      token = login(user, password, apikey, otp)
     else:
-      print("INFO: You need to either specify operation without REST connectivity (--no-rest) or supply valid credentials. (--user, --apikey, --token or --rc).")
+      print("You need to either specify operation without REST connectivity (--no-rest).")
+      print("Or supply valid credentials. (--user, --apikey or --token or --rc).")
       sys.exit()
+
+  if storedsafe:
+    url = "https://" + storedsafe + "/api/1.0"
+  else:
+    print('You need to specify a server (--storedsafe) to connect to.')
+    sys.exit()
 
   if not authCheck():
     sys.exit()
@@ -340,6 +364,7 @@ def readrc(rc_file):
     return (server, token)
   else:
     print(("ERROR: Can not open \"%s\"." % rc_file))
+    sys.exit()
 
   return (server, token)
 
@@ -348,11 +373,24 @@ def passphrase(user):
   return(p)
 
 def OTP(user):
-  otp = getpass.getpass('Press ' + user + '\'s Yubikey: ')
+  otp = input('Enter OTP (Yubikey or TOTP): ')
   return(otp)
 
-def login(user, key):
-  payload = { 'username': user, 'keys': key }
+def login(user, password, apikey, otp):
+  if len(otp) > 8:
+    payload = {
+      'username': user,
+      'keys': "{}{}{}".format(password, apikey, otp)
+    }
+  else:
+    payload = {
+      'username': user,
+      'passphrase': password,
+      'otp': otp,
+      'apikey': apikey,
+      'logintype': 'totp'
+    }
+
   try:
     if basic_auth_user:
       r = requests.post(url + '/auth', data=json.dumps(payload), auth=(basic_auth_user, basic_auth_pw))
@@ -628,6 +666,9 @@ def CSVRead(infile, template, fieldnames, separator):
   lines = []
   for line in reader:
     if stuff_extra:
+      if not stuff_extra in line:
+        print('The field "' + stuff_extra + '" doesn\'t exist.')
+        sys.exit()
       if 'unspecified-columns' in line:
         for v in line['unspecified-columns']:
           line[str(stuff_extra)] += ' ' + v
