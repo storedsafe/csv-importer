@@ -14,20 +14,21 @@ The script is written in Python v2 and has been tested on macOS Sierra and on Li
 
 ## Installation instructions
 
-This script requires Python v2 and some libraries. 
+This script requires Python v3 and some libraries.
 
-It has been developed and tested using Python v2.7.10, on macOS Sierra 10.12.6.
+It has been developed and tested using Python v3.7.4, on macOS Sierra 10.15.3.
 
-Most of the required libraries are installed by default,  but others require manual installation. (requests, requests_toolbelt, netaddr)
+Most of the required libraries are installed by default, but others require manual installation. (requests)
 
 **requests:**
+
+```
+sudo pip install -r requirements.txt
+```
+or
+
 ```
 sudo -H pip install requests
-```
-
-**requests-toolbelt:**
-```
-sudo -H pip install requests-toolbelt
 ```
 
 ## Syntax
@@ -35,26 +36,31 @@ sudo -H pip install requests-toolbelt
 ```
 $ csv-importer.py --help
 Usage: csv-importer.py [-vdsuat]
- --verbose (or -v)              (Boolean) Enable verbose output.
- --debug (or -d)                (Boolean) Enable debug output.
+ --verbose                      (Boolean) Enable verbose output.
+ --debug                        (Boolean) Enable debug output.
  --rc <rc file>                 Use this file to obtain a valid token and a server address.
  --storedsafe (or -s) <Server>  Use this StoredSafe server.
  --user (or -u) <user>          Authenticate as this user to the StoredSafe server.
  --apikey (or -a) <API Key>     Use this unique API key when communicating with the StoredSafe server.
  --token (or -t) <Auth Token>   Use pre-authenticated token instead of --user and --apikey.
+ --basic-auth-user <user:pw>    Specify the user name and password to use for HTTP Basic Authentication
  --csv <file>                   File in CSV format to import.
  --separator <char>             Use this character as CSV delimiter. (defaults to ,)
  --json <file>                  Store output (JSON) in this file.
  --fieldnames <fields>          Specify the mapping between columns and field names. Has to match exactly. Defaults to the Server template.
+ --objectname <field>           Use this field as objectname when storing objects. Defaults to the host field from the Server template
  --template <template>          Use this template name for import. Name has to match exactly. Defaults to the Server template.
  --templateid <template-ID>     Use this template-ID when importing.
  --vault <Vaultname>            Store imported objects in this vault. Name has to match exactly.
  --vaultid <Vault-ID>           Store imported objects in this Vault-ID.
- --objectname <field>           Use this field as objectname when storing objects. (Defaults to the host field from the Server template)
+ --create-vault                 (Boolean) Create missing vaults.
+ --policy <policy-id>           Use this password policy for newly created vaults. (Default to 7)
+ --description <text>           Use this as description for any newly created vault. (Default to "Created by csv-importer.")
  --allow-duplicates             (Boolean) Allow duplicates when importing.
  --no-rest                      Operate in off-line mode, do not attempt to use the REST API.
  --skip-first-line              Skip first line of input. A CSV file usually has headers, use this to skip them.
  --remove-extra-columns         Remove any extra columns the if CSV file has more columns than the template.
+ --stuff-extra <field>          Add data from extranous columns to this field.
  --list-vaults                  List all vaults accessible to the authenticated user.
  --list-templates               List all available templates.
  --list-fieldnames              List all fieldnames in the specified template. (--template or --templateid)
@@ -105,6 +111,11 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 > Use pre-authenticated token instead of ```--user``` and ```--apikey```, also removes requirement to login with passphrase and OTP.
 
 ```
+--basic-auth-user <user:pw>
+```
+> Specify the user name and password to use for HTTP Basic Authentication.
+
+```
 --csv <CSV file>
 ```
 > Specify one or more IPv4 or IPv6 networks. Overlapping will be resolved.
@@ -123,6 +134,11 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 --fieldnames
 ```
 > Use this comma separated list as input field names. See ```--list-fieldnames``` for valid field names per template.
+
+```
+--objectname
+```
+> Use this field as the primary name for the object. Defaults to the "host" field from the Server template.
 
 ```
 --template
@@ -145,9 +161,19 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 > Store any found certificates in this Vault-ID.
 
 ```
---objectname
+ --create-vault
 ```
-> Use this field as the primary name for the object. Defaults to the "host" field from the Server template.
+> Create missing vaults.
+
+```
+--policy <policy-id>
+```
+> Use this password policy for newly created vaults. (Default to 7)
+
+```
+--description <text>
+```
+> Use this as description for any newly created vault. (Default to "Created by csv-importer.")
 
 ```
 --allow-duplicates
@@ -168,6 +194,11 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 --remove-extra-columns
 ```
 > If the input CSV file has more columns than matching fields in StoredSafe, remove them.
+
+```
+--stuff-extra <field>
+```
+> Add data from extranous columns to this field.
 
 ```
 --list-vaults
@@ -306,13 +337,34 @@ $ csv-importer.py --no-rest --csv file.csv --skip-first-line
     ]
 }
 ```
+When importing CSV files with extra fields, you can either delete the extra fields:
+
+```
+$ csv-importer.py --no-rest --template 'Credit Card' --csv file.csv --json file.json --remove-extra-columns
+```
+
+Or concatenate them into an existing field:
+
+```
+$ csv-importer.py --no-rest --template Note --csv file.csv --json file.json --stuff-extra note
+```
+
+List all built in templates in off-line mode:
+
+```
+$ python3 csv-importer.py --no-rest --list-templates
+Builtin templates: Server, Login, Short Login, PIN Code, Note, Credit Card
+```
+
+List fieldnames from built in templates, in off-line mode:
+
+```
+$ csv-importer.py --no-rest --list-fieldnames --template "Credit Card"
+"Credit Card": service, cardno, expires, cvc, owner, pincode, note1, note2
+```
 
 ## Limitations / Known issues
-```
---create-vault
---stuff-extra-fields
-```
-> Is not yet implemented.
+No known limitation.
 
 ## License
 GPL
