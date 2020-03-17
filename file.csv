@@ -1,0 +1,6 @@
+host,username,password,info,cryptedinfo
+fw.safe.domain.cc,admin,j5nJ2QQnRhp7xYwG8fExygDvD,Firewall for Stockholm office.,iLO password is k3PUibwrWMCYCtxlYgsrOiKRZZnIxA
+resolver.safe.domain.cc,root,Xf6PVBdlad40sS3C7u1H6mVsD,"unbound, recursive resolver for Stockholm office",
+safe.domain.cc,rolf,BoDJCrHLF4VNOyeBOuKzZocqc,Rolf Rolfsson,cryptedinfo
+safe.domain.cc,sven,lKuBdy1k6HMxbVh6vRB5yW7q6,Sven Hell,cryptedinfo
+kdc.safe.domain.cc,root,uFwWyzrAjyU4RKVdnnClXMuJ5,KDC located in D4K3,Backup GPG passphrase is 3Bxq8Df2LrPpf99qT0mml8SI5Di9hY7QwDMioHvARxj1fmXRFy
