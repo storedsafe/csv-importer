@@ -684,8 +684,8 @@ def CSVRead(infile, fieldnames, separator):
           line[str(stuff_extra)] += ' ' + v
         del line['unspecified-columns']
       elif delete_extra:
-    	  if 'unspecified-columns' in line:
-    		  del line['unspecified-columns']
+        if 'unspecified-columns' in line:
+          del line['unspecified-columns']
       else:
         extra_columns += 1
 
