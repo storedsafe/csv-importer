@@ -39,13 +39,15 @@ munch_stdin      = False
 basic_auth_user  = False
 basic_auth_pw    = False
 objectname       = False
+not_empty        = False
+fill_with        = 'n/a'
 vaultpolicy      = '7'
 vaultdescription = 'Created by csv-importer.'
 
-
 def main():
   global token, url, verbose, debug, create_vault, allow_duplicates, no_rest, skip_first, delete_extra,\
-     stuff_extra, munch_stdin, basic_auth_user, basic_auth_pw, objectname, vaultpolicy, vaultdescription
+     stuff_extra, munch_stdin, basic_auth_user, basic_auth_pw, objectname, vaultpolicy, vaultdescription,\
+     not_empty, fill_with
 
   # Some default values
   _default_template = 'Server'
@@ -72,9 +74,9 @@ def main():
     [ "verbose", "debug", "storedsafe=", "server=", "token=", "user=", "apikey=",\
      "vault=", "vaultid=", "template=", "templateid=", "rc=", "csv=", "json=", \
      "create-vault", "allow-duplicates", "no-rest", "fieldnames=", "separator=",\
-     "objectname=", "skip-first-line", "remove-extra-columns",\
-     "stuff-extra=", "list-templates", "list-fieldnames", "list-vaults",\
-     "basic-auth-user=", "policy=", "description=", "help" ])
+     "objectname=", "skip-first-line", "remove-extra-columns","stuff-extra=",\
+     "not-empty=","fill-with=","list-templates", "list-fieldnames", "list-vaults",\
+     "basic-auth-user=", "policy=", "description=", "delete-extra", "help" ])
   except getopt.GetoptError as err:
     print(("%s" % str(err)))
     usage()
@@ -136,12 +138,16 @@ def main():
       no_rest = True
     elif opt in ("--skip-first-line"):
       skip_first = True
-    elif opt in ("--remove-extra-columns"):
+    elif opt in ("--remove-extra-columns", "--delete-extra"):
       delete_extra = True
       stuff_extra = False
     elif opt in ("--stuff-extra"):
       stuff_extra = arg
       delete_extra = False
+    elif opt in ("--not-empty"):
+      not_empty = arg.split(',')
+    elif opt in ("--fill-with"):
+      fill_with = arg
     elif opt in ("--list-vaults"):
       list_vaults = True
     elif opt in ("--list-templates"):
@@ -193,7 +199,7 @@ def main():
       print(*_std_templates[template], sep=',')
       sys.exit()
 
-    lines = CSVRead(infile, template, fieldnames, separator)
+    lines = CSVRead(infile, fieldnames, separator)
     data = {}
     data[template] = lines
 
@@ -296,7 +302,7 @@ def main():
   # Read input and import via REST
   #
 
-  data = CSVRead(infile, template, fieldnames, separator)
+  data = CSVRead(infile, fieldnames, separator)
   (imported, duplicates, skipped) = insertObjects(data, templateid, fieldnames, vaultid)
 
   if imported:
@@ -314,6 +320,7 @@ def usage():
   print(("Usage: %s [-vdsuat]" % sys.argv[0]))
   print(" --verbose                      (Boolean) Enable verbose output.")
   print(" --debug                        (Boolean) Enable debug output.")
+  print(" --no-rest                      Operate in off-line mode, do not attempt to use the REST API.")
   print(" --rc <rc file>                 Use this file to obtain a valid token and a server address.")
   print(" --storedsafe (or -s) <Server>  Use this StoredSafe server.")
   print(" --user (or -u) <user>          Authenticate as this user to the StoredSafe server.")
@@ -326,20 +333,22 @@ def usage():
   print(" --fieldnames <fields>          Specify the mapping between columns and field names. Has to match exactly. Defaults to the Server template.")
   print(" --objectname <field>           Use this field as objectname when storing objects. Defaults to the host field from the Server template")
   print(" --template <template>          Use this template name for import. Name has to match exactly. Defaults to the Server template.")
-  print(" --templateid <template-ID>     Use this template-ID when importing.")
-  print(" --vault <Vaultname>            Store imported objects in this vault. Name has to match exactly.")
-  print(" --vaultid <Vault-ID>           Store imported objects in this Vault-ID.")
-  print(" --create-vault                 (Boolean) Create missing vaults.")
-  print(" --policy <policy-id>           Use this password policy for newly created vaults. (Default to " + vaultpolicy + ")")
-  print(" --description <text>           Use this as description for any newly created vault. (Default to \"" + vaultdescription + "\")")
-  print(" --allow-duplicates             (Boolean) Allow duplicates when importing.")
-  print(" --no-rest                      Operate in off-line mode, do not attempt to use the REST API.")
+  print(" --templateid <template-ID>     Use this template-ID when importing. (*)")
+  print(" --vault <Vaultname>            Store imported objects in this vault. Name has to match exactly. (*)")
+  print(" --vaultid <Vault-ID>           Store imported objects in this Vault-ID. (*)")
+  print(" --create-vault                 (Boolean) Create missing vaults. (*)")
+  print(" --policy <policy-id>           Use this password policy for newly created vaults. (Default to policy #" + vaultpolicy + ") (*)")
+  print(" --description <text>           Use this as description for any newly created vault. (Default to \"" + vaultdescription + "\") (*)")
+  print(" --allow-duplicates             (Boolean) Allow duplicates when importing. (*)")
   print(" --skip-first-line              Skip first line of input. A CSV file usually has headers, use this to skip them.")
   print(" --remove-extra-columns         Remove any extra columns the if CSV file has more columns than the template.")
   print(" --stuff-extra <field>          Add data from extranous columns to this field.")
-  print(" --list-vaults                  List all vaults accessible to the authenticated user.")
+  print(" --not-empty <fielda,fieldb>    These fields must not be blank in imports. (Separate fields with \",\")")
+  print(" --fill-with <string>           For fields specified with --not-empty, use this string as filler. (Defaults to \"" + fill_with + "\")")
+  print(" --list-vaults                  List all vaults accessible to the authenticated user. (*)")
   print(" --list-templates               List all available templates.")
   print(" --list-fieldnames              List all fieldnames in the specified template. (--template or --templateid)")
+  print("\n(*) REST mode only.")
   print("\nUsing REST API and interactive login:")
   print(("$ %s --storedsafe safe.domain.cc --user bob --apikey myapikey --csv file.csv --vault \"Public Web Servers\" --verbose" % sys.argv[0]))
   print("\nUsing REST API and pre-authenticated login:")
@@ -644,7 +653,8 @@ def findTemplateName(templateid):
 
   return(template)
 
-def CSVRead(infile, template, fieldnames, separator):
+def CSVRead(infile, fieldnames, separator):
+  extra_columns = 0
   if munch_stdin:
     file = sys.stdin
   else:
@@ -665,18 +675,30 @@ def CSVRead(infile, template, fieldnames, separator):
 
   lines = []
   for line in reader:
-    if stuff_extra:
-      if not stuff_extra in line:
-        print('The field "' + stuff_extra + '" doesn\'t exist.')
-        sys.exit()
-      if 'unspecified-columns' in line:
+    if 'unspecified-columns' in line:
+      if stuff_extra:
+        if not stuff_extra in line:
+          print('The field "' + stuff_extra + '" doesn\'t exist.')
+          sys.exit()
         for v in line['unspecified-columns']:
           line[str(stuff_extra)] += ' ' + v
         del line['unspecified-columns']
-    if delete_extra:
-    	if 'unspecified-columns' in line:
-    		del line['unspecified-columns']
+      elif delete_extra:
+        if 'unspecified-columns' in line:
+          del line['unspecified-columns']
+      else:
+        extra_columns += 1
+
+    if not_empty:
+      for v in not_empty:
+        if line[v] == '':
+          line[v] = fill_with
+
     lines.append(line)
+
+  if extra_columns:
+    print('WARNING: Extra, unmatched columns detected. Import will most likely fail due to this.')
+    print('WARNING: Consider using \"--remove-extra-columns\" or \"--stuff-extra\".')
 
   return lines
 
