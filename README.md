@@ -10,15 +10,13 @@ csv-importer.py can also utilize StoredSafe's REST API to directly import object
 
 Other authentication options includes specifying a valid token (```--token```) or perform an on-line one-shot authentication (```--user``` and ```--apikey```)
 
-The script is written in Python v2 and has been tested on macOS Sierra and on Linux (any fairly recent version of Ubuntu or Red Hat should work fine).
+The script is written in Python v3 and has been tested on macOS Sierra and on Linux (any fairly recent version of Ubuntu or Red Hat should work fine).
 
 ## Installation instructions
 
-This script requires Python v3 and some libraries.
+This script requires Python v3 and some libraries. It has been developed and tested using Python v3.7.4, on macOS Sierra 10.15.3.
 
-It has been developed and tested using Python v3.7.4, on macOS Sierra 10.15.3.
-
-Most of the required libraries are installed by default, but others require manual installation. (requests)
+Most of the required libraries are installed by default, but ```requests``` might require manual installation.
 
 **requests:**
 
@@ -38,32 +36,36 @@ $ csv-importer.py --help
 Usage: csv-importer.py [-vdsuat]
  --verbose                      (Boolean) Enable verbose output.
  --debug                        (Boolean) Enable debug output.
+ --no-rest                      Operate in off-line mode, do not attempt to use the REST API.
  --rc <rc file>                 Use this file to obtain a valid token and a server address.
  --storedsafe (or -s) <Server>  Use this StoredSafe server.
  --user (or -u) <user>          Authenticate as this user to the StoredSafe server.
  --apikey (or -a) <API Key>     Use this unique API key when communicating with the StoredSafe server.
  --token (or -t) <Auth Token>   Use pre-authenticated token instead of --user and --apikey.
- --basic-auth-user <user:pw>    Specify the user name and password to use for HTTP Basic Authentication
+ --basic-auth-user <user:pw>    Specify the user name and password to use for HTTP Basic Authentication.
  --csv <file>                   File in CSV format to import.
  --separator <char>             Use this character as CSV delimiter. (defaults to ,)
  --json <file>                  Store output (JSON) in this file.
  --fieldnames <fields>          Specify the mapping between columns and field names. Has to match exactly. Defaults to the Server template.
  --objectname <field>           Use this field as objectname when storing objects. Defaults to the host field from the Server template
  --template <template>          Use this template name for import. Name has to match exactly. Defaults to the Server template.
- --templateid <template-ID>     Use this template-ID when importing.
- --vault <Vaultname>            Store imported objects in this vault. Name has to match exactly.
- --vaultid <Vault-ID>           Store imported objects in this Vault-ID.
- --create-vault                 (Boolean) Create missing vaults.
- --policy <policy-id>           Use this password policy for newly created vaults. (Default to 7)
- --description <text>           Use this as description for any newly created vault. (Default to "Created by csv-importer.")
- --allow-duplicates             (Boolean) Allow duplicates when importing.
- --no-rest                      Operate in off-line mode, do not attempt to use the REST API.
+ --templateid <template-ID>     Use this template-ID when importing. (*)
+ --vault <Vaultname>            Store imported objects in this vault. Name has to match exactly. (*)
+ --vaultid <Vault-ID>           Store imported objects in this Vault-ID. (*)
+ --create-vault                 (Boolean) Create missing vaults. (*)
+ --policy <policy-id>           Use this password policy for newly created vaults. (Default to policy #7) (*)
+ --description <text>           Use this as description for any newly created vault. (Default to "Created by csv-importer.") (*)
+ --allow-duplicates             (Boolean) Allow duplicates when importing. (*)
  --skip-first-line              Skip first line of input. A CSV file usually has headers, use this to skip them.
  --remove-extra-columns         Remove any extra columns the if CSV file has more columns than the template.
  --stuff-extra <field>          Add data from extranous columns to this field.
- --list-vaults                  List all vaults accessible to the authenticated user.
+ --not-empty <fielda,fieldb>    These fields must not be blank in imports. (Separate fields with ",")
+ --fill-with <string>           For fields specified with --not-empty, use this string as filler. (Defaults to "n/a")
+ --list-vaults                  List all vaults accessible to the authenticated user. (*)
  --list-templates               List all available templates.
  --list-fieldnames              List all fieldnames in the specified template. (--template or --templateid)
+
+(*) REST mode only.
 
 Using REST API and interactive login:
 $ csv-importer.py --storedsafe safe.domain.cc --user bob --apikey myapikey --csv file.csv --vault "Public Web Servers" --verbose
@@ -84,6 +86,11 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 --debug
 ```
 > Add debug output.
+
+```
+--no-rest
+```
+> Do not use the REST API, operate completely in off-line mode. Result displayed to screen (default) or can be saved in a file. (```--json```)
 
 ```
 --rc <RC file>
@@ -161,7 +168,7 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 > Store any found certificates in this Vault-ID.
 
 ```
- --create-vault
+--create-vault
 ```
 > Create missing vaults.
 
@@ -181,11 +188,6 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 > Allow importing the same certificate to the same vault multiple times.
 
 ```
---no-rest
-```
-> Do not use the REST API, operate completely in off-line mode. Result displayed to screen (default) or can be saved in a file. (```--json```)
-
-```
 --skip-first-line
 ```
 > Normally the first line in a CSV file has headers, use this option to skip these.
@@ -199,6 +201,16 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 --stuff-extra <field>
 ```
 > Add data from extranous columns to this field.
+
+```
+--not-empty <fielda,fieldb>
+```
+> Certain fields in templates can not be blank in imports. If import complains on empty fields, this option can be used to fill those fields with data. (Separate fields with ",")
+
+```
+--fill-with <string>
+```
+> For fields specified with --not-empty, use this string as filler. (Defaults to 'n/a')
 
 ```
 --list-vaults
@@ -337,7 +349,14 @@ $ csv-importer.py --no-rest --csv file.csv --skip-first-line
     ]
 }
 ```
-When importing CSV files with extra fields, you can either delete the extra fields:
+When importing CSV files with extra fields, you will receive a warning.
+
+```
+WARNING: Extra, unmatched columns detected. Import will most likely fail due to this.
+WARNING: Consider using "--remove-extra-columns" or "--stuff-extra".
+```
+
+To remediate, you can either delete the extra fields:
 
 ```
 $ csv-importer.py --no-rest --template 'Credit Card' --csv file.csv --json file.json --remove-extra-columns
@@ -360,7 +379,30 @@ List fieldnames from built in templates, in off-line mode:
 
 ```
 $ csv-importer.py --no-rest --list-fieldnames --template "Credit Card"
-"Credit Card": service, cardno, expires, cvc, owner, pincode, note1, note2
+service,cardno,expires,cvc,owner,pincode,note1,note2
+```
+Since certain fields in different templates requires a value, it is possible to specify fields that can not be empty, and also supply an appropriate string as a filler.
+
+```
+$ csv-importer.py --no-rest --csv file7.csv --not-empty host,username --fill-with "blank"
+{
+    "Server": [
+        {
+            "host": "exocet",
+            "username": "blank",
+            "password": "5b9VcuPpwQG1R0MBCk8TEMtT7w7hd0j1i3iRERqm",
+            "info": "https://exocet.domain.tld/login",
+            "cryptedinfo": "Serialno: u54898945"
+        },
+        {
+            "host": "blank",
+            "username": "root",
+            "password": "UiA7NrjVcOMWcd1aUZaW1lFUuDzXFJkGzZ7aSjmU",
+            "info": "",
+            "cryptedinfo": "same password for the admin user in the webui"
+        }
+    ]
+}
 ```
 
 ## Limitations / Known issues
