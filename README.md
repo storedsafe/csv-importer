@@ -384,7 +384,10 @@ service,cardno,expires,cvc,owner,pincode,note1,note2
 Since certain fields in different templates requires a value, it is possible to specify fields that can not be empty, and also supply an appropriate string as a filler.
 
 ```
-$ csv-importer.py --no-rest --csv file7.csv --not-empty host,username --fill-with "blank"
+$ cat file.csv
+exocet,,5b9VcuPpwQG1R0MBCk8TEMtT7w7hd0j1i3iRERqm,https://exocet.domain.tld/login,Serialno: u54898945
+,root,UiA7NrjVcOMWcd1aUZaW1lFUuDzXFJkGzZ7aSjmU,,same password for the admin user in the webui
+$ csv-importer.py --no-rest --csv file.csv --not-empty host,username --fill-with "blank"
 {
     "Server": [
         {
