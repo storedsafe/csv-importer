@@ -219,8 +219,6 @@ def main():
   # If we have a rc file, parse it
   if rc_file:
     (storedsafe, token) = readrc(rc_file)
-  else:
-    print('Can not find an RC file. Either use the tokenhandler or supply needed information manually.')
 
   # If token or server supplied on cmdline, use them
   if supplied_token:
@@ -470,13 +468,44 @@ def findVaultID(vaultname):
 
   return(vaultid)
 
+def findVaultName(vaultid):
+  vaultname = False
+  payload = { 'token': token }
+  try:
+    if basic_auth_user:
+      r = requests.get(url + '/vault/' + vaultid, params=payload, auth=(basic_auth_user, basic_auth_pw))
+    else:
+      r = requests.get(url + '/vault/' + vaultid, params=payload)
+  except:
+    print(("ERROR: No connection to \"%s\"" % url))
+    sys.exit()
+
+  if not r.ok:
+    if create_vault:
+      if debug: print(("DEBUG: Can not find Vault-ID \"%s\", will try to create a new vault." % vaultid))
+      vaultname = 'Vault-' + vaultid
+      vaultid = createVault(vaultname)
+    else:
+      print(("ERROR: Can not find Vault-ID \"%s\" and \"--create-vault\" not specified." % vaultid))
+      sys.exit()
+
+  data = json.loads(r.content)
+  if data['CALLINFO']['status'] == "SUCCESS":
+    vaultname = data['GROUP'][vaultid]['groupname']
+    if debug: print(("DEBUG: Found Vault \"%s\" via Vault-ID \"%s\"" % (vaultname, vaultid)))
+  else:
+    print(("ERROR: Can not retreive Vaultname for Vault-ID %s." % vaultid))
+    sys.exit()
+
+  return(vaultname)
+
 def createVault(vaultname):
   payload = { 'token': token, 'groupname': vaultname, 'policy': vaultpolicy, 'description': vaultdescription }
   try:
     if basic_auth_user:
       r = requests.post(url + '/vault', json=payload, auth=(basic_auth_user, basic_auth_pw))
     else:
-      r = requests.post(url + '/vault', json=payload)      
+      r = requests.post(url + '/vault', json=payload)
   except:
     print(("ERROR: No connection to \"%s\"" % url))
     sys.exit()
@@ -491,35 +520,6 @@ def createVault(vaultname):
   vaultid = data['GROUP'][v[0]]['id']
   if verbose: print("Created new Vault \"" + vaultname + "\" with Vault-ID \"" + vaultid + "\"")
   return(vaultid)
-
-def findVaultName(vaultid):
-  payload = { 'token': token }
-  try:
-    if basic_auth_user:
-      r = requests.get(url + '/vault/' + vaultid, params=payload, auth=(basic_auth_user, basic_auth_pw))
-    else:
-      r = requests.get(url + '/vault/' + vaultid, params=payload)
-  except:
-    print(("ERROR: No connection to \"%s\"" % url))
-    sys.exit()
-
-  if not r.ok:
-    if create_vault:
-      print(("INFO: Can not find Vault-ID \"%s\", will try to create a new vault." % vaultid))
-      vaultname = False
-    else:
-      print(("ERROR: Can not find Vault-ID \"%s\" and \"--create-vault\" not specified." % vaultid))
-      sys.exit()
-
-  data = json.loads(r.content)
-  if data['CALLINFO']['status'] == "SUCCESS":
-    vaultname = data['GROUP'][vaultid]['groupname']
-    if debug: print(("DEBUG: Found Vault \"%s\" via Vault-ID \"%s\"" % (vaultname, vaultid)))
-  else:
-    print(("ERROR: Can not retreive Vaultname for Vault-ID %s." % vaultid))
-    sys.exit()
-
-  return(vaultname)
 
 def getFieldNames(templateid):
   payload = { 'token': token }
