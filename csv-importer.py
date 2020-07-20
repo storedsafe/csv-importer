@@ -14,11 +14,11 @@ import getpass
 import os.path
 import re
 import requests
- 
+
 __author__     = "Fredrik Soderblom"
 __copyright__  = "Copyright 2020, AB StoredSafe"
 __license__    = "GPL"
-__version__    = "1.0.4"
+__version__    = "1.0.5"
 __maintainer__ = "Fredrik Soderblom"
 __email__      = "fredrik@storedsafe.com"
 __status__     = "Production"
@@ -52,12 +52,12 @@ def main():
   # Some default values
   _default_template = 'Server'
   _std_templates = {
-    'Server': ['host', 'username', 'password', 'info', 'cryptedinfo' ],
-    'Login': ['host', 'username', 'password'],
-    'Short Login': ['username', 'password'],
-    'PIN Code': ['name', 'pincode', 'info'],
-    'Note': ['name', 'note'],
-    'Credit Card': ['service', 'cardno', 'expires', 'cvc', 'owner', 'pincode', 'note1', 'note2']
+      'Server': ['host', 'username', 'password', 'info', 'cryptedinfo' ],
+      'Login': ['host', 'username', 'password'],
+      'Short Login': ['username', 'password'],
+      'PIN Code': ['name', 'pincode', 'info'],
+      'Note': ['name', 'note'],
+      'Credit Card': ['service', 'cardno', 'expires', 'cvc', 'owner', 'pincode', 'note1', 'note2']
   }
 
   exitcode = 0
@@ -70,9 +70,9 @@ def main():
     rc_file = os.path.expanduser('~/.storedsafe-client.rc')
 
   try:
-   opts, args = getopt.getopt(sys.argv[1:], "s:u:a:t:?",\
+   opts, _ = getopt.getopt(sys.argv[1:], "vds:u:a:t:?",\
     [ "verbose", "debug", "storedsafe=", "server=", "token=", "user=", "apikey=",\
-     "vault=", "vaultid=", "template=", "templateid=", "rc=", "csv=", "json=", \
+     "vault=", "vaultid=", "vault-id=", "template=", "templateid=", "template-id=", "rc=", "csv=", "json=", \
      "create-vault", "allow-duplicates", "no-rest", "fieldnames=", "separator=",\
      "objectname=", "skip-first-line", "remove-extra-columns","stuff-extra=",\
      "not-empty=","fill-with=","list-templates", "list-fieldnames", "list-vaults",\
@@ -89,9 +89,9 @@ def main():
     sys.exit()
 
   for opt, arg in opts:
-    if opt in ("--verbose"):
+    if opt in ("--verbose", "-v"):
       verbose = True
-    elif opt in ("--debug"):
+    elif opt in ("--debug", "-d"):
       debug = True
       verbose = True
     elif opt in ("-s", "--storedsafe", "--server"):
@@ -114,11 +114,11 @@ def main():
       rc_file = arg
     elif opt in ("--vault"):
       vaultname = arg
-    elif opt in ("--vaultid"):
+    elif opt in ("--vaultid", "--vault-id"):
       vaultid = arg
     elif opt in ("--template"):
       template = arg
-    elif opt in ("--templateid"):
+    elif opt in ("--templateid", "--template-id"):
       templateid = arg
     elif opt in ("--csv"):
       infile = arg
@@ -229,7 +229,7 @@ def main():
   if not token:
     if user and apikey:
       password = passphrase(user)
-      otp = OTP(user)
+      otp = OTP()
       token = login(user, password, apikey, otp)
     else:
       print("You need to either specify operation without REST connectivity (--no-rest).")
@@ -246,7 +246,7 @@ def main():
     sys.exit()
 
   # Handle defaults
-  if not templateid: 
+  if not templateid:
     templateid = '1'
   else:
     # Check if Template-ID exists, return Template name
@@ -260,8 +260,6 @@ def main():
 
   # Extract field names, unless given on command line
   if not fieldnames:
-    fieldnames = _std_templates[str(template)]
-  else:
     fieldnames = getFieldNames(templateid)
 
   # Unless objectname is set, set it to first element of templates fieldnames
@@ -301,11 +299,11 @@ def main():
   #
 
   data = CSVRead(infile, fieldnames, separator)
-  (imported, duplicates, skipped) = insertObjects(data, templateid, fieldnames, vaultid)
+  (imported, duplicates, skipped) = insertObjects(data, templateid, vaultid)
 
   if imported:
     if verbose: print(("Imported %d object/s" % imported))
-  if skipped: 
+  if skipped:
     print(("WARNING: Could not import %s object/s due to errors encountered during import." % skipped))
     exitcode = 1
   if duplicates:
@@ -355,47 +353,46 @@ def usage():
   print(("$ %s --no-rest --csv file.csv --json file.json --template Login --fieldnames host,username,password" % sys.argv[0]))
 
 def readrc(rc_file):
-  token = server = False
+  tok = srv = False
   if os.path.isfile(rc_file):
     f = open(rc_file, 'r')
     for line in f:
       if "token" in line:
-        token = re.sub('token:([a-zA-Z0-9]+)\n$', r'\1', line)
-        if token == 'none': token = False
+        tok = re.sub('token:([a-zA-Z0-9]+)\n$', r'\1', line)
+        if tok == 'none': tok = False
       if "mysite" in line:
-        server = re.sub('mysite:([a-zA-Z0-9.]+)\n$', r'\1', line)
-        if server == 'none': server = False
+        srv = re.sub('mysite:([a-zA-Z0-9.]+)\n$', r'\1', line)
+        if srv == 'none': srv = False
     f.close()
-    if not token: print(("INFO: Could not find a valid token in \"%s\", skipping it." % rc_file))
-    if not server: print(("INFO: Could not find a valid server in \"%s\", skipping it." % rc_file))
-    return (server, token)
+    if not tok: print(("INFO: Could not find a valid token in \"%s\", skipping it." % rc_file))
+    if not srv: print(("INFO: Could not find a valid server in \"%s\", skipping it." % rc_file))
+    return (srv, tok)
   else:
     print(("ERROR: Can not open \"%s\"." % rc_file))
     sys.exit()
-
-  return (server, token)
+  return (srv, tok)
 
 def passphrase(user):
   p = getpass.getpass('Enter ' + user + '\'s passphrase: ')
   return(p)
 
-def OTP(user):
+def OTP():
   otp = input('Enter OTP (Yubikey or TOTP): ')
   return(otp)
 
 def login(user, password, apikey, otp):
   if len(otp) > 8:
     payload = {
-      'username': user,
-      'keys': "{}{}{}".format(password, apikey, otp)
+        'username': user,
+        'keys': "{}{}{}".format(password, apikey, otp)
     }
   else:
     payload = {
-      'username': user,
-      'passphrase': password,
-      'otp': otp,
-      'apikey': apikey,
-      'logintype': 'totp'
+        'username': user,
+        'passphrase': password,
+        'otp': otp,
+        'apikey': apikey,
+        'logintype': 'totp'
     }
 
   try:
@@ -453,17 +450,20 @@ def findVaultID(vaultname):
     sys.exit()
 
   data = json.loads(r.content)
-  for v in list(data['GROUP'].items()):
-    if vaultname == data['GROUP'][v[0]]['groupname']:
-      vaultid = v[0]
-      if debug: print(("DEBUG: Found Vault \"%s\" via Vaultname as Vault-ID \"%s\"" % (vaultname, vaultid)))
+  if (len(data['VAULTS']) > 0): # Unless result is empty
+    for vault in data['VAULTS']:
+      if vaultname == vault['groupname']:
+        vaultid = vault['id']
+        if debug: print("Found Vault \"%s\" via Vaultname as Vault-ID \"%s\"" % (vaultname, vaultid))
+        break
 
   if not vaultid:
     if create_vault:
       if debug: print(("DEBUG: Can not find Vaultname \"%s\", will try to create a new vault." % vaultname))
       vaultid = createVault(vaultname)
+      return(vaultid)
     else:
-      print(("ERROR: Can not find Vaultname \"%s\" and \"--create-vault\" not specified." % vaultname))   
+      print(("ERROR: Can not find Vaultname \"%s\" and \"--create-vault\" not specified." % vaultname))
       sys.exit()
 
   return(vaultid)
@@ -485,13 +485,14 @@ def findVaultName(vaultid):
       if debug: print(("DEBUG: Can not find Vault-ID \"%s\", will try to create a new vault." % vaultid))
       vaultname = 'Vault-' + vaultid
       vaultid = createVault(vaultname)
+      return(vaultname)
     else:
       print(("ERROR: Can not find Vault-ID \"%s\" and \"--create-vault\" not specified." % vaultid))
       sys.exit()
 
   data = json.loads(r.content)
   if data['CALLINFO']['status'] == "SUCCESS":
-    vaultname = data['GROUP'][vaultid]['groupname']
+    vaultname = data['VAULT'][0]['groupname']
     if debug: print(("DEBUG: Found Vault \"%s\" via Vault-ID \"%s\"" % (vaultname, vaultid)))
   else:
     print(("ERROR: Can not retreive Vaultname for Vault-ID %s." % vaultid))
@@ -515,10 +516,14 @@ def createVault(vaultname):
 
   data = json.loads(r.content)
   # There's gotta be better way..
-  # data['GROUP']: {'179': {'id': '179', 'groupname': 'Firewalls in ZA', 'poli
-  v = list(data['GROUP'])
-  vaultid = data['GROUP'][v[0]]['id']
-  if verbose: print("Created new Vault \"" + vaultname + "\" with Vault-ID \"" + vaultid + "\"")
+  # data['VAULT']: {'179': {'id': '179', 'groupname': 'Firewalls in ZA', 'poli
+  try:
+    if (len(data['VAULTS']) > 0): # Unless result is empty
+      vaultid = data['VAULT'][0]['id']
+      if verbose: print("Created new Vault \"" + vaultname + "\" with Vault-ID \"" + vaultid + "\"")
+  except:
+    print("ERROR: Failed to create vault \"" + vaultname + "\"")
+    sys.exit()
   return(vaultid)
 
 def getFieldNames(templateid):
@@ -537,15 +542,15 @@ def getFieldNames(templateid):
 
   data = json.loads(r.content)
   if data['CALLINFO']['status'] == "SUCCESS":
-    template = data["TEMPLATE"][templateid]["INFO"]["name"]
+    template = data['TEMPLATE']['INFO']['name']
     if debug: print(("DEBUG: Found Template \"%s\" via Template-ID \"%s\"" % (template, templateid)))
   else:
     print(("ERROR: Can not retreive Template for Template-ID %s." % templateid))
     sys.exit()
 
   fieldnames = []
-  for v in data["TEMPLATE"][templateid]['STRUCTURE']:
-    fieldnames.append(v)
+  for fieldname in data['TEMPLATE']['STRUCTURE']:
+    fieldnames.append(fieldname)
 
   return fieldnames
 
@@ -567,12 +572,10 @@ def listTemplates():
     sys.exit()
 
   data = json.loads(r.content)
-  for v in list(data["TEMPLATE"].items()):
-    template = data["TEMPLATE"][v[0]]["INFO"]["name"]
-    templateid = v[0]
-    print(("Found Template \"%s\" as Template-ID \"%s\"" % (template, templateid)))
-
-  return
+  for template in data['TEMPLATE']:
+    templatename = template['INFO']['name']
+    templateid = template['INFO']['id']
+    print(("Found Template \"%s\" as Template-ID \"%s\"" % (templatename, templateid)))
 
 def listVaults():
   vaultname = False
@@ -591,16 +594,14 @@ def listVaults():
     sys.exit()
 
   data = json.loads(r.content)
-  if (len(data['GROUP'])): # Unless result is empty
-    for v in list(data['GROUP'].items()):
-      vaultname = data['GROUP'][v[0]]['groupname']
-      vaultid = v[0]
-      permission = data['GROUP'][v[0]]['statustext']
-      print(("Vault \"%s\" (Vault-ID \"%s\") with \"%s\" permissions." % (vaultname, vaultid, permission)))
+  if (len(data['VAULTS']) > 0): # Unless result is empty
+    for vault in data['VAULTS']:
+      vaultname = vault['groupname']
+      vaultid = vault['id']
+      permission = vault["statustext"]
+      print("Vault \"%s\" (Vault-ID \"%s\") with \"%s\" permissions." % (vaultname, vaultid, permission))
   else:
     print("You don't have access to any vaults. Bohoo.")
-
-  return
 
 def findTemplateID(template):
   templateid = False
@@ -618,13 +619,13 @@ def findTemplateID(template):
     sys.exit()
 
   data = json.loads(r.content)
-  for v in list(data["TEMPLATE"].items()):
-    if template == data["TEMPLATE"][v[0]]["INFO"]["name"]:
-      templateid = v[0]
+  for obj in data['TEMPLATE']:
+    if template == obj['INFO']['name']:
+      templateid = obj['INFO']['id']
       if debug: print(("DEBUG: Found Template \"%s\" as Template-ID \"%s\"" % (template, templateid)))
 
   if not templateid:
-    print(("ERROR: Can not find Template-ID \"%s\"." % template))   
+    print(("ERROR: Can not find Template-ID \"%s\"." % template))
     sys.exit()
 
   return(templateid)
@@ -645,7 +646,7 @@ def findTemplateName(templateid):
 
   data = json.loads(r.content)
   if data['CALLINFO']['status'] == "SUCCESS":
-    template = data["TEMPLATE"][templateid]["INFO"]["name"]
+    template = data['TEMPLATE']['INFO']['name']
     if debug: print(("DEBUG: Found Template \"%s\" via Template-ID \"%s\"" % (template, templateid)))
   else:
     print(("ERROR: Can not retreive Template for Template-ID %s." % templateid))
@@ -717,14 +718,12 @@ def getObjects(vaultid):
     sys.exit()
 
   data = json.loads(r.content)
-  if debug: print(("DEBUG: Getting objects in Vault \"%s\" (Vault-ID %s)" % (data['GROUP'][vaultid]['groupname'], vaultid)))
+  if debug: print(("DEBUG: Getting objects in Vault \"%s\" (Vault-ID %s)" % (data['VAULT'][0]['groupname'], vaultid)))
 
-  objects = {}
-  if (len(data['OBJECT'])):
-    for v in list(data['OBJECT'].items()):
-      objects[v[0]] = v[1]
-
-  return objects
+  if (len(data['OBJECTS']) > 0):
+    return data['OBJECTS']
+  else:
+    return {} # return empty dict?
 
 def find_duplicates(line, templateid, vaultid):
   candidate = match = 0
@@ -734,36 +733,36 @@ def find_duplicates(line, templateid, vaultid):
   objects = getObjects(vaultid)
 
   if debug: print(("DEBUG: Searching thru Vault \"%s\" (Vault-ID %s) for duplicates of \"%s\"." % (vaultname, vaultid, line['objectname'])))
-  for key in list(objects.keys()):
-    if objects[key]['templateid'] == templateid:
-      if debug: print((" DEBUG: Examining object \"%s\" (Object-ID %s)" % (objects[key]['objectname'], key)))
-      if 'objectname' in objects[key]:
-        if objects[key]['objectname'] == line['objectname']:
+  for obj in objects:
+    if obj['templateid'] == templateid:
+      if debug: print((" DEBUG: Examining object \"%s\" (Object-ID %s)" % (obj['objectname'], obj['id'])))
+      if 'objectname' in obj:
+        if obj['objectname'] == line['objectname']:
           candidate += 1
           if debug: print(("   DEBUG: Field matched. (%d total matche/s)" % (candidate)))
       for fieldname in fieldnames:
-        if fieldname in objects[key]['public']:
-          if debug: print(("  DEBUG: Examine \"%s\": found \"%s\" (compare with \"%s\")" % (fieldname, objects[key]['public'][fieldname], line[fieldname])))
-          if objects[key]['public'][fieldname] == line[fieldname]:
+        if fieldname in obj['public']:
+          if debug: print(("  DEBUG: Examine \"%s\": found \"%s\" (compare with \"%s\")" % (fieldname, obj['public'][fieldname], line[fieldname])))
+          if obj['public'][fieldname] == line[fieldname]:
             candidate += 1
             if debug: print(("   DEBUG: Field matched. (%d total matche/s)" % (candidate)))
       if (candidate >= 3):
         match += 1
-        if verbose: print(("INFO: Object \"%s\" (Object-ID %s) (%d field/s matched) - possible duplicate. (Use \"--allow-duplicates\" to force import)" % (objects[key]['objectname'], key, candidate)))
+        if verbose: print(("INFO: Object \"%s\" (Object-ID %s) (%d field/s matched) - possible duplicate. (Use \"--allow-duplicates\" to force import)" % (obj['objectname'], obj['id'], candidate)))
       else:
-        if debug: print((" DEBUG: Object \"%s\" (Object-ID %s) (%d field/s matched)" % (objects[key]['objectname'], key, candidate)))
+        if debug: print((" DEBUG: Object \"%s\" (Object-ID %s) (%d field/s matched)" % (obj['objectname'], obj['id'], candidate)))
       candidate = 0
     else:
-      if debug: print(("DEBUG: Incorrect template (#%s), skipping." % (objects[key]['templateid'])))
+      if debug: print(("DEBUG: Incorrect template (#%s), skipping." % (obj['templateid'])))
   if (match >= 1):
     duplicate = True
-#   if verbose: print(("INFO: Found %s possible duplicate object/s in \"%s\" when trying to import \"%s\". (Use \"--allow-duplicates\" to force import)" % (match, vaultname, line['objectname'])))
+    if verbose: print(("INFO: Found %s possible duplicate object/s in \"%s\" when trying to import \"%s\". (Use \"--allow-duplicates\" to force import)" % (match, vaultname, line['objectname'])))
   else:
     if debug: print(("DEBUG: \"%s\" has no duplicates in Vault \"%s\"." % (line['objectname'], vaultname)))
 
   return(duplicate)
 
-def insertObjects(lines, templateid, fieldnames, vaultid):
+def insertObjects(lines, templateid, vaultid):
   exists = False
   imported = duplicates = skipped = 0
   vaultname = findVaultName(vaultid)
@@ -789,7 +788,7 @@ def insertObjects(lines, templateid, fieldnames, vaultid):
         print(("ERROR: Could not import \"%s\" into the Vault \"%s\". Error from server was: \"%s\"." % (line['objectname'], vaultname, data['ERRORS'][0])))
       else:
         imported += 1
-        if verbose: print(("Importing \"%s\" (Object-ID: %s) into the Vault \"%s\" (Vault-ID: %s)." % (line[objectname], data['CALLINFO']['objectid'], vaultname, vaultid)))
+        if verbose: print(("Importing \"%s\" (Object-ID: %s) into the Vault \"%s\" (Vault-ID: %s)." % (line['objectname'], data['CALLINFO']['objectid'], vaultname, vaultid)))
     else:
       duplicates += 1
 
