@@ -6,32 +6,35 @@ Imports to StoredSafe can either be done thru the reference web UI implementatio
 
 csv-importer.py can assist in both modes. By specifying the ```--no-rest``` option, csv-importer.py will operate in in off-line mode and translating input to the required JSON structures and store it in a file (```--json``` option), or output to stdout (which is the default option).
 
-csv-importer.py can also utilize StoredSafe's REST API to directly import objects. If the ```--no-rest``` option is not specified, csv-importer.py will operate in REST API mode and will require either that pre-authentication has been performed by the StoredSafe token handler CLI module (```storedsafe-tokenhandler.py```) and stored in an init file which location can be specified with the ```--rc``` option. 
+csv-importer.py can also utilize StoredSafe's REST API to directly import objects. If the ```--no-rest``` option is not specified, csv-importer.py will operate in REST API mode and will require either that pre-authentication has been performed by the StoredSafe token handler CLI module (```storedsafe-tokenhandler.py```) and stored in an init file which location can be specified with the ```--rc``` option.
 
 Other authentication options includes specifying a valid token (```--token```) or perform an on-line one-shot authentication (```--user``` and ```--apikey```)
 
-The script is written in Python v3 and has been tested on macOS Sierra and on Linux (any fairly recent version of Ubuntu or Red Hat should work fine).
+The script is written in Python v3 and has been tested on macOS Catalina (10.15.5) and on Linux (any fairly recent version of Ubuntu or Red Hat should work fine).
+
+Support for previous versions of StoredSafe (pre v2.1.0) can be found in the legacy branch.
 
 ## Installation instructions
 
-This script requires Python v3 and some libraries. It has been developed and tested using Python v3.7.4, on macOS Sierra 10.15.3.
+This script requires Python v3 and some libraries. It has been developed and tested using Python v3.7.7, on macOS Catalina 10.15.5.
 
 Most of the required libraries are installed by default, but ```requests``` might require manual installation.
 
 **requests:**
 
-```
+```bash
 sudo pip install -r requirements.txt
 ```
+
 or
 
-```
+```bash
 sudo -H pip install requests
 ```
 
 ## Syntax
 
-```
+```bash
 $ csv-importer.py --help
 Usage: csv-importer.py [-vdsuat]
  --verbose                      (Boolean) Enable verbose output.
@@ -77,162 +80,191 @@ Off-line mode:
 $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --fieldnames host,username,password
 ```
 
-```
+```bash
 --verbose
-``` 
+```
+
 > Add verbose output.
 
-```
+```bash
 --debug
 ```
+
 > Add debug output.
 
-```
+```bash
 --no-rest
 ```
+
 > Do not use the REST API, operate completely in off-line mode. Result displayed to screen (default) or can be saved in a file. (```--json```)
 
-```
+```bash
 --rc <RC file>
 ```
+
 > Obtain credentials (token) and server information from this file. (Enabled by default to ```~/.storedsafe-client.rc```)
 
-```
+```bash
 --storedsafe|-s <server>
 ```
+
 > Upload certificates to this StoredSafe server.
 
-```
+```bash
 --user|-u <user>
 ```
+
 > Authenticate as this StoredSafe user.
 
-```
+```bash
 --apikey|-a <apikey>
 ```
+
 > Use this unique API key when communicating with StoredSafe. (Unique per application and installation)
 
-```
+```bash
 --token <token>
 ```
+
 > Use pre-authenticated token instead of ```--user``` and ```--apikey```, also removes requirement to login with passphrase and OTP.
 
-```
+```bash
 --basic-auth-user <user:pw>
 ```
+
 > Specify the user name and password to use for HTTP Basic Authentication.
 
-```
+```bash
 --csv <CSV file>
 ```
+
 > Specify one or more IPv4 or IPv6 networks. Overlapping will be resolved.
 
-```
+```bash
 --separator
 ```
+
 > Use this character as CSV separator. (Single character)
 
-```
+```bash
 --json
 ```
+
 > Output resulting JSON to this file.
 
-```
+```bash
 --fieldnames
 ```
+
 > Use this comma separated list as input field names. See ```--list-fieldnames``` for valid field names per template.
 
-```
+```bash
 --objectname
 ```
+
 > Use this field as the primary name for the object. Defaults to the "host" field from the Server template.
 
-```
+```bash
 --template
 ```
+
 > Use this StoredSafe template for import. See ```--list-templates``` for a complete list of supported templates on the server. (Case sensitive and name has to match exactly)
 
-```
+```bash
 --templateid
 ```
+
 > Instead of using the template name (```--template```), you can specify the Template-ID which is unique per template.
 
-```
+```bash
 --vault|-v <Vaultname>
 ```
+
 > Store any found certificates in this vault. Name has to match exactly. See ```--list-vaults``` for a complete list of accessible vaults on the StoredSafe server.
 
-```
+```bash
 --vaultid <Vault-ID>
 ```
+
 > Store any found certificates in this Vault-ID.
 
-```
+```bash
 --create-vault
 ```
+
 > Create missing vaults.
 
-```
+```bash
 --policy <policy-id>
 ```
+
 > Use this password policy for newly created vaults. (Default to 7)
 
-```
+```bash
 --description <text>
 ```
+
 > Use this as description for any newly created vault. (Default to "Created by csv-importer.")
 
-```
+```bash
 --allow-duplicates
 ```
+
 > Allow importing the same certificate to the same vault multiple times.
 
-```
+```bash
 --skip-first-line
 ```
+
 > Normally the first line in a CSV file has headers, use this option to skip these.
 
-```
+```bash
 --remove-extra-columns
 ```
+
 > If the input CSV file has more columns than matching fields in StoredSafe, remove them.
 
-```
+```bash
 --stuff-extra <field>
 ```
+
 > Add data from extranous columns to this field.
 
-```
+```bash
 --not-empty <fielda,fieldb>
 ```
+
 > Certain fields in templates can not be blank in imports. If import complains on empty fields, this option can be used to fill those fields with data. (Separate fields with ",")
 
-```
+```bash
 --fill-with <string>
 ```
+
 > For fields specified with --not-empty, use this string as filler. (Defaults to 'n/a')
 
-```
+```bash
 --list-vaults
 ```
+
 > List all vaults accessible to the authenticated user on the StoredSafe server.
 
-```
+```bash
 --list-templates
 ```
+
 > List all templates accessible to the authenticated user on the StoredSafe server.
 
-```
+```bash
 --list-fieldnames
 ```
+
 > List all fields in the specified template. Obtained by querying the template on the StoredSafe server.
 
-Usage
-=====
+## Usage
 
 Prepare a CSV file for importing objects to StoredSafe, this can be done manually or by exporting from an other password manager, or an excel spreadsheet.
 
-```
+```bash
 $ cat file.csv
 host,username,password,info,cryptedinfo
 fw.safe.domain.cc,admin,j5nJ2QQnRhp7xYwG8fExygDvD,Firewall for Stockholm office.,iLO password is k3PUibwrWMCYCtxlYgsrOiKRZZnIxA
@@ -244,7 +276,7 @@ kdc.safe.domain.cc,root,uFwWyzrAjyU4RKVdnnClXMuJ5,KDC located in D4K3,Backup GPG
 
 Import objects into the StoredSafe appliance using the file "file.csv" as input (content as below), use a pre-authenticated session (```--rc```) and store imported objects in the "Stockholm Office" Vault on the StoredSafe server "safe.domain.cc".
 
-```
+```bash
 $ csv-importer.py --rc ~/.storedsafe-client.rc --csv file.csv --vault "Stockholm Office" --skip-first-line --verbose
 Importing "fw.safe.domain.cc" into the Vault "Stockholm Office" (Vault-ID 182).
 Importing "resolver.safe.domain.cc" into the Vault "Stockholm Office" (Vault-ID 182).
@@ -256,7 +288,7 @@ Imported 5 object/s
 
 Re-running the import, csv-importer.py will detect that the objects are already present in the vault "Stockholm Office" and will avoid storing duplicates by default. (can be changed with --allow-duplicates)
 
-```
+```bash
 $ csv-importer.py --rc ~/.storedsafe-client.rc --csv file.csv --vault "Stockholm Office" --skip-first-line --verbose
 WARNING: Object "fw.safe.domain.cc" (Object-ID 696) (4 field/s matched "fw.safe.domain.cc") - duplicate.
 WARNING: Found 1 possible duplicate object/s in "Stockholm Office" when trying to import "fw.safe.domain.cc". (Use "--allow-duplicates" to force import)
@@ -273,7 +305,7 @@ WARNING: Skipped 5 duplicate object/s.
 
 List all available templates on the server.
 
-```
+```bash
 $ csv-importer.py --rc ~/.storedsafe-client.rc --list-templates
 Found Template "Credit Card" as Template-ID "11"
 Found Template "Short login" as Template-ID "10"
@@ -288,7 +320,7 @@ Found Template "Server/IP" as Template-ID "1001"
 
 List all field names in a selected template.
 
-```
+```bash
 $ csv-importer.py --rc ~/.storedsafe-client.rc --list-fieldnames --templateid 1001
 username,info,ip,host,password,cryptedinfo
 
@@ -296,7 +328,7 @@ username,info,ip,host,password,cryptedinfo
 
 List all vaults available to the current authenticated users.
 
-```
+```bash
 $ csv-importer.py --rc ~/.storedsafe-client.rc --list-vaults
 Vault "StoredSafe" (Vault-ID "1") with "Admin" permissions.
 Vault "Testing grounds" (Vault-ID "19") with "Admin" permissions.
@@ -305,9 +337,9 @@ Vault "Public Web Servers" (Vault-ID "181") with "Admin" permissions.
 Vault "Firewalls in ZA" (Vault-ID "179") with "Admin" permissions.
 ```
 
-Using the off-line mode, format the input CSV file according to the StoredSafe JSON specifications, which latter can be validated and imported thru the standard StoredSafe web UI. 
+Using the off-line mode, format the input CSV file according to the StoredSafe JSON specifications, which latter can be validated and imported thru the standard StoredSafe web UI.
 
-```
+```bash
 $ csv-importer.py --no-rest --csv file.csv --skip-first-line
 {
     "Server": [
@@ -349,41 +381,43 @@ $ csv-importer.py --no-rest --csv file.csv --skip-first-line
     ]
 }
 ```
+
 When importing CSV files with extra fields, you will receive a warning.
 
-```
+```bash
 WARNING: Extra, unmatched columns detected. Import will most likely fail due to this.
 WARNING: Consider using "--remove-extra-columns" or "--stuff-extra".
 ```
 
 To remediate, you can either delete the extra fields:
 
-```
+```bash
 $ csv-importer.py --no-rest --template 'Credit Card' --csv file.csv --json file.json --remove-extra-columns
 ```
 
 Or concatenate them into an existing field:
 
-```
+```bash
 $ csv-importer.py --no-rest --template Note --csv file.csv --json file.json --stuff-extra note
 ```
 
 List all built in templates in off-line mode:
 
-```
+```bash
 $ python3 csv-importer.py --no-rest --list-templates
 Builtin templates: Server, Login, Short Login, PIN Code, Note, Credit Card
 ```
 
 List fieldnames from built in templates, in off-line mode:
 
-```
+```bash
 $ csv-importer.py --no-rest --list-fieldnames --template "Credit Card"
 service,cardno,expires,cvc,owner,pincode,note1,note2
 ```
+
 Since certain fields in different templates requires a value, it is possible to specify fields that can not be empty, and also supply an appropriate string as a filler.
 
-```
+```bash
 $ cat file.csv
 exocet,,5b9VcuPpwQG1R0MBCk8TEMtT7w7hd0j1i3iRERqm,https://exocet.domain.tld/login,Serialno: u54898945
 ,root,UiA7NrjVcOMWcd1aUZaW1lFUuDzXFJkGzZ7aSjmU,,same password for the admin user in the webui
@@ -409,7 +443,9 @@ $ csv-importer.py --no-rest --csv file.csv --not-empty host,username --fill-with
 ```
 
 ## Limitations / Known issues
+
 No known limitation.
 
 ## License
+
 GPL
