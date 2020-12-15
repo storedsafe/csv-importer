@@ -1,0 +1,25 @@
+{
+    "Server": [
+        {
+            "host": "Account",
+            "username": "Login Name",
+            "password": "Password",
+            "info": "Web Site",
+            "cryptedinfo": "Comments"
+        },
+        {
+            "host": "Sample Entry",
+            "username": "User Name",
+            "password": "Password",
+            "info": "http://keepass.info/",
+            "cryptedinfo": "Notes"
+        },
+        {
+            "host": "Sample Entry #2",
+            "username": "Michael321",
+            "password": "12345",
+            "info": "http://keepass.info/help/kb/testform.html",
+            "cryptedinfo": ""
+        }
+    ]
+}
