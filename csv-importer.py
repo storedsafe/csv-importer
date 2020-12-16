@@ -62,7 +62,7 @@ def main():
 
   exitcode = 0
   list_templates = list_fieldnames = list_vaults = False
-  templateid = template = fieldnames = separator = False
+  templateid = template = fieldnames = separator = escapechar = False
   user = apikey = storedsafe = vaultid = vaultname = False
   rc_file = supplied_token = supplied_server = outfile = infile = False
 
@@ -73,7 +73,7 @@ def main():
    opts, _ = getopt.getopt(sys.argv[1:], "vds:u:a:t:?",\
     [ "verbose", "debug", "storedsafe=", "server=", "token=", "user=", "apikey=",\
      "vault=", "vaultid=", "vault-id=", "template=", "templateid=", "template-id=", "rc=", "csv=", "json=", \
-     "create-vault", "allow-duplicates", "no-rest", "fieldnames=", "separator=",\
+     "create-vault", "allow-duplicates", "no-rest", "fieldnames=", "separator=", "escapechar=",\
      "objectname=", "skip-first-line", "remove-extra-columns","stuff-extra=",\
      "not-empty=","fill-with=","list-templates", "list-fieldnames", "list-vaults",\
      "basic-auth-user=", "policy=", "description=", "delete-extra", "help" ])
@@ -124,6 +124,8 @@ def main():
       infile = arg
     elif opt in ("--separator"):
       separator = arg
+    elif opt in ("--escapechar"):
+      escapechar = arg
     elif opt in ("--json"):
       outfile = arg
     elif opt in ("--fieldnames"):
@@ -167,6 +169,7 @@ def main():
       assert False, "Unrecognized option"
 
   # Handle defaults
+  if not escapechar:  escapechar = None
   if not separator:  separator = ','
   if not infile:     munch_stdin = True
 
@@ -199,7 +202,7 @@ def main():
       print(*_std_templates[template], sep=',')
       sys.exit()
 
-    lines = CSVRead(infile, fieldnames, separator)
+    lines = CSVRead(infile, fieldnames, separator, escapechar)
     data = {}
     data[template] = lines
 
@@ -298,7 +301,7 @@ def main():
   # Read input and import via REST
   #
 
-  data = CSVRead(infile, fieldnames, separator)
+  data = CSVRead(infile, fieldnames, separator, escapechar)
   (imported, duplicates, skipped) = insertObjects(data, templateid, vaultid)
 
   if imported:
@@ -325,6 +328,7 @@ def usage():
   print(" --basic-auth-user <user:pw>    Specify the user name and password to use for HTTP Basic Authentication.")
   print(" --csv <file>                   File in CSV format to import.")
   print(" --separator <char>             Use this character as CSV delimiter. (defaults to ,)")
+  print(" --escapechar <char>            Use this character to escape special characters. (defaults to None)")
   print(" --json <file>                  Store output (JSON) in this file.")
   print(" --fieldnames <fields>          Specify the mapping between columns and field names. Has to match exactly. Defaults to the Server template.")
   print(" --objectname <field>           Use this field as objectname when storing objects. Defaults to the host field from the Server template")
@@ -654,7 +658,7 @@ def findTemplateName(templateid):
 
   return(template)
 
-def CSVRead(infile, fieldnames, separator):
+def CSVRead(infile, fieldnames, separator, escapechar):
   extra_columns = 0
   if munch_stdin:
     file = sys.stdin
@@ -666,7 +670,12 @@ def CSVRead(infile, fieldnames, separator):
       sys.exit()
 
   try:
-    reader = csv.DictReader(file, delimiter=separator, fieldnames=fieldnames, restkey="unspecified-columns")
+    reader = csv.DictReader(
+        file,
+        delimiter=separator,
+        escapechar=escapechar,
+        fieldnames=fieldnames,
+        restkey="unspecified-columns")
   except:
     print("ERROR: could not read CSV input.")
     sys.exit()
