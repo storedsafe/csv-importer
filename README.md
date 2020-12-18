@@ -48,6 +48,7 @@ Usage: csv-importer.py [-vdsuat]
  --basic-auth-user <user:pw>    Specify the user name and password to use for HTTP Basic Authentication.
  --csv <file>                   File in CSV format to import.
  --separator <char>             Use this character as CSV delimiter. (defaults to ,)
+ --escapechar <char>            Use this character to escape special characters. (defaults to None)
  --json <file>                  Store output (JSON) in this file.
  --fieldnames <fields>          Specify the mapping between columns and field names. Has to match exactly. Defaults to the Server template.
  --objectname <field>           Use this field as objectname when storing objects. Defaults to the host field from the Server template
@@ -145,6 +146,12 @@ $ csv-importer.py --no-rest --csv file.csv --json file.json --template Login --f
 ```
 
 > Use this character as CSV separator. (Single character)
+
+```bash
+--escapechar
+```
+
+> Use this character as CSV escape char. (Single character)
 
 ```bash
 --json
