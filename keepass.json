@@ -20,6 +20,13 @@
             "password": "12345",
             "info": "http://keepass.info/help/kb/testform.html",
             "cryptedinfo": ""
+        },
+        {
+            "host": "Sample Entry with quotes",
+            "username": "Michael321",
+            "password": "12\"3\"45,http://keepass.info/help/kb/testform.html\"",
+            "info": "",
+            "cryptedinfo": null
         }
     ]
 }
