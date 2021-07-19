@@ -365,7 +365,7 @@ def readrc(rc_file):
         tok = re.sub('token:([a-zA-Z0-9]+)\n$', r'\1', line)
         if tok == 'none': tok = False
       if "mysite" in line:
-        srv = re.sub('mysite:([a-zA-Z0-9.]+)\n$', r'\1', line)
+        srv = re.sub('mysite:([-a-zA-Z0-9_.]+)\n$', r'\1', line)
         if srv == 'none': srv = False
     f.close()
     if not tok: print(("INFO: Could not find a valid token in \"%s\", skipping it." % rc_file))
