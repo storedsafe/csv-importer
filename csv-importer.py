@@ -229,6 +229,12 @@ def main():
   if supplied_server:
     storedsafe = supplied_server
 
+  if storedsafe:
+    url = "https://" + storedsafe + "/api/1.0"
+  else:
+    print('You need to specify a server (--storedsafe) to connect to.')
+    sys.exit()
+
   if not token:
     if user and apikey:
       password = passphrase(user)
@@ -238,12 +244,6 @@ def main():
       print("You need to either specify operation without REST connectivity (--no-rest).")
       print("Or supply valid credentials. (--user, --apikey or --token or --rc).")
       sys.exit()
-
-  if storedsafe:
-    url = "https://" + storedsafe + "/api/1.0"
-  else:
-    print('You need to specify a server (--storedsafe) to connect to.')
-    sys.exit()
 
   if not authCheck():
     sys.exit()
